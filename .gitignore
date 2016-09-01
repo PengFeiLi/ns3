@@ -18,4 +18,6 @@ build/
 *.pyc
 
 *.txt
-.tags
+.tags*
+*.log
+*.log.[0-9]
