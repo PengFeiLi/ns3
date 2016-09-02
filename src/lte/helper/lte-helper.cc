@@ -71,7 +71,8 @@ NS_OBJECT_ENSURE_REGISTERED (LteHelper);
 LteHelper::LteHelper (void)
   : m_fadingStreamsAssigned (false),
     m_imsiCounter (0),
-    m_cellIdCounter (0)
+    m_cellIdCtrlCounter (32767),
+    m_cellIdUserCounter (0)
 {
   NS_LOG_FUNCTION (this);
   m_enbNetDeviceFactory.SetTypeId (LteEnbNetDevice::GetTypeId ());
@@ -186,7 +187,7 @@ TypeId LteHelper::GetTypeId (void)
     .AddAttribute ("UseIdealRrc",
                    "If true, LteRrcProtocolIdeal will be used for RRC signaling. "
                    "If false, LteRrcProtocolReal will be used.",
-                   BooleanValue (true), 
+                   BooleanValue (false), 
                    MakeBooleanAccessor (&LteHelper::m_useIdealRrc),
                    MakeBooleanChecker ())
     .AddAttribute ("AnrEnabled",
@@ -394,6 +395,27 @@ LteHelper::InstallEnbDevice (NodeContainer c)
 }
 
 NetDeviceContainer
+LteHelper::InstallSeparationEnbDevice (NodeContainer c)
+{
+  NS_LOG_FUNCTION (this);
+  NS_ASSERT_MSG (c.GetN() >= 2, "the nubmer of eNodeBs should be no less than 2");
+  Initialize ();
+  NetDeviceContainer devices;
+  Ptr<Node> node;
+  Ptr<NetDevice> device;
+  node = *(c.Begin());
+  device = InstallSingleCtrlEnbDevice (node);
+  devices.Add(device);
+  for(NodeContainer::Iterator i = c.Begin() + 1; i != c.End(); i++)
+    {
+      node = *i;
+      device = InstallSingleEnbDevice(node);
+      devices.Add(device);
+    }
+  return devices;
+}
+
+NetDeviceContainer
 LteHelper::InstallUeDevice (NodeContainer c)
 {
   NS_LOG_FUNCTION (this);
@@ -407,13 +429,183 @@ LteHelper::InstallUeDevice (NodeContainer c)
   return devices;
 }
 
+Ptr<NetDevice>
+LteHelper::InstallSingleCtrlEnbDevice (Ptr<Node> n)
+{
+  NS_ABORT_MSG_IF (m_cellIdCtrlCounter == 65535, "max num control eNBs exceeded");
+  uint16_t cellId = ++m_cellIdCtrlCounter;
+
+  Ptr<LteSpectrumPhy> dlPhy = CreateObject<LteSpectrumPhy> ();
+  Ptr<LteSpectrumPhy> ulPhy = CreateObject<LteSpectrumPhy> ();
+
+  Ptr<LteEnbPhy> phy = CreateObject<LteEnbPhy> (dlPhy, ulPhy);
+
+  Ptr<LteHarqPhy> harq = Create<LteHarqPhy> ();
+  dlPhy->SetHarqPhyModule (harq);
+  ulPhy->SetHarqPhyModule (harq);
+  phy->SetHarqPhyModule (harq);
+
+  Ptr<LteChunkProcessor> pCtrl = Create<LteChunkProcessor> ();
+  pCtrl->AddCallback (MakeCallback (&LteEnbPhy::GenerateCtrlCqiReport, phy));
+  ulPhy->AddCtrlSinrChunkProcessor (pCtrl); // for evaluating SRS UL-CQI
+
+  Ptr<LteChunkProcessor> pData = Create<LteChunkProcessor> ();
+  pData->AddCallback (MakeCallback (&LteEnbPhy::GenerateDataCqiReport, phy));
+  pData->AddCallback (MakeCallback (&LteSpectrumPhy::UpdateSinrPerceived, ulPhy));
+  ulPhy->AddDataSinrChunkProcessor (pData); // for evaluating PUSCH UL-CQI
+
+  Ptr<LteChunkProcessor> pInterf = Create<LteChunkProcessor> ();
+  pInterf->AddCallback (MakeCallback (&LteEnbPhy::ReportInterference, phy));
+  ulPhy->AddInterferenceDataChunkProcessor (pInterf); // for interference power tracing
+
+  dlPhy->SetChannel (m_downlinkChannel);
+  ulPhy->SetChannel (m_uplinkChannel);
+
+  Ptr<MobilityModel> mm = n->GetObject<MobilityModel> ();
+  NS_ASSERT_MSG (mm, "MobilityModel needs to be set on node before calling LteHelper::InstallUeDevice ()");
+  dlPhy->SetMobility (mm);
+  ulPhy->SetMobility (mm);
+
+  Ptr<AntennaModel> antenna = (m_enbAntennaModelFactory.Create ())->GetObject<AntennaModel> ();
+  NS_ASSERT_MSG (antenna, "error in creating the AntennaModel object");
+  dlPhy->SetAntenna (antenna);
+  ulPhy->SetAntenna (antenna);
+
+  Ptr<LteEnbMac> mac = CreateObject<LteEnbMac> ();
+  Ptr<FfMacScheduler> sched = m_schedulerFactory.Create<FfMacScheduler> ();
+  Ptr<LteFfrAlgorithm> ffrAlgorithm = m_ffrAlgorithmFactory.Create<LteFfrAlgorithm> ();
+  Ptr<LteHandoverAlgorithm> handoverAlgorithm = m_handoverAlgorithmFactory.Create<LteHandoverAlgorithm> ();
+  Ptr<LteEnbRrc> rrc = CreateObject<LteEnbRrc> ();
+
+  if (m_useIdealRrc)
+    {
+      Ptr<LteEnbRrcProtocolIdeal> rrcProtocol = CreateObject<LteEnbRrcProtocolIdeal> ();
+      rrcProtocol->SetLteEnbRrcSapProvider (rrc->GetLteEnbRrcSapProvider ());
+      rrc->SetLteEnbRrcSapUser (rrcProtocol->GetLteEnbRrcSapUser ());
+      rrc->AggregateObject (rrcProtocol);
+      rrcProtocol->SetCellId (cellId);
+    }
+  else
+    {
+      Ptr<LteEnbRrcProtocolReal> rrcProtocol = CreateObject<LteEnbRrcProtocolReal> ();
+      rrcProtocol->SetLteEnbRrcSapProvider (rrc->GetLteEnbRrcSapProvider ());
+      rrc->SetLteEnbRrcSapUser (rrcProtocol->GetLteEnbRrcSapUser ());
+      rrc->AggregateObject (rrcProtocol);
+      rrcProtocol->SetCellId (cellId);
+    }
+
+  if (m_epcHelper != 0)
+    {
+      EnumValue epsBearerToRlcMapping;
+      rrc->GetAttribute ("EpsBearerToRlcMapping", epsBearerToRlcMapping);
+      // it does not make sense to use RLC/SM when also using the EPC
+      if (epsBearerToRlcMapping.Get () == LteEnbRrc::RLC_SM_ALWAYS)
+        {
+          rrc->SetAttribute ("EpsBearerToRlcMapping", EnumValue (LteEnbRrc::RLC_UM_ALWAYS));
+        }
+    }
+
+  rrc->SetLteEnbCmacSapProvider (mac->GetLteEnbCmacSapProvider ());
+  mac->SetLteEnbCmacSapUser (rrc->GetLteEnbCmacSapUser ());
+  rrc->SetLteMacSapProvider (mac->GetLteMacSapProvider ());
+
+  rrc->SetLteHandoverManagementSapProvider (handoverAlgorithm->GetLteHandoverManagementSapProvider ());
+  handoverAlgorithm->SetLteHandoverManagementSapUser (rrc->GetLteHandoverManagementSapUser ());
+
+  mac->SetFfMacSchedSapProvider (sched->GetFfMacSchedSapProvider ());
+  mac->SetFfMacCschedSapProvider (sched->GetFfMacCschedSapProvider ());
+
+  sched->SetFfMacSchedSapUser (mac->GetFfMacSchedSapUser ());
+  sched->SetFfMacCschedSapUser (mac->GetFfMacCschedSapUser ());
+
+  phy->SetLteEnbPhySapUser (mac->GetLteEnbPhySapUser ());
+  mac->SetLteEnbPhySapProvider (phy->GetLteEnbPhySapProvider ());
+
+  phy->SetLteEnbCphySapUser (rrc->GetLteEnbCphySapUser ());
+  rrc->SetLteEnbCphySapProvider (phy->GetLteEnbCphySapProvider ());
+
+  //FFR SAP
+  sched->SetLteFfrSapProvider (ffrAlgorithm->GetLteFfrSapProvider ());
+  ffrAlgorithm->SetLteFfrSapUser (sched->GetLteFfrSapUser ());
+
+  rrc->SetLteFfrRrcSapProvider (ffrAlgorithm->GetLteFfrRrcSapProvider ());
+  ffrAlgorithm->SetLteFfrRrcSapUser (rrc->GetLteFfrRrcSapUser ());
+  //FFR SAP END
+
+  Ptr<LteEnbNetDevice> dev = m_enbNetDeviceFactory.Create<LteEnbNetDevice> ();
+  dev->SetNode (n);
+  dev->SetAttribute ("CellId", UintegerValue (cellId)); 
+  dev->SetAttribute ("LteEnbPhy", PointerValue (phy));
+  dev->SetAttribute ("LteEnbMac", PointerValue (mac));
+  dev->SetAttribute ("FfMacScheduler", PointerValue (sched));
+  dev->SetAttribute ("LteEnbRrc", PointerValue (rrc)); 
+  dev->SetAttribute ("LteHandoverAlgorithm", PointerValue (handoverAlgorithm));
+  dev->SetAttribute ("LteFfrAlgorithm", PointerValue (ffrAlgorithm));
+
+  if (m_isAnrEnabled)
+    {
+      Ptr<LteAnr> anr = CreateObject<LteAnr> (cellId);
+      rrc->SetLteAnrSapProvider (anr->GetLteAnrSapProvider ());
+      anr->SetLteAnrSapUser (rrc->GetLteAnrSapUser ());
+      dev->SetAttribute ("LteAnr", PointerValue (anr));
+    }
+
+  phy->SetDevice (dev);
+  dlPhy->SetDevice (dev);
+  ulPhy->SetDevice (dev);
+
+  n->AddDevice (dev);
+  ulPhy->SetLtePhyRxDataEndOkCallback (MakeCallback (&LteEnbPhy::PhyPduReceived, phy));
+  ulPhy->SetLtePhyRxCtrlEndOkCallback (MakeCallback (&LteEnbPhy::ReceiveLteControlMessageList, phy));
+  ulPhy->SetLtePhyUlHarqFeedbackCallback (MakeCallback (&LteEnbPhy::ReceiveLteUlHarqFeedback, phy));
+  rrc->SetForwardUpCallback (MakeCallback (&LteEnbNetDevice::Receive, dev));
+
+  NS_LOG_LOGIC ("set the propagation model frequencies");
+  double dlFreq = LteSpectrumValueHelper::GetCarrierFrequency (dev->GetDlEarfcn ());
+  NS_LOG_LOGIC ("DL freq: " << dlFreq);
+  bool dlFreqOk = m_downlinkPathlossModel->SetAttributeFailSafe ("Frequency", DoubleValue (dlFreq));
+  if (!dlFreqOk)
+    {
+      NS_LOG_WARN ("DL propagation model does not have a Frequency attribute");
+    }
+  double ulFreq = LteSpectrumValueHelper::GetCarrierFrequency (dev->GetUlEarfcn ());
+  NS_LOG_LOGIC ("UL freq: " << ulFreq);
+  bool ulFreqOk = m_uplinkPathlossModel->SetAttributeFailSafe ("Frequency", DoubleValue (ulFreq));
+  if (!ulFreqOk)
+    {
+      NS_LOG_WARN ("UL propagation model does not have a Frequency attribute");
+    }
+
+  dev->Initialize ();
+
+  m_uplinkChannel->AddRx (ulPhy);
+
+  if (m_epcHelper != 0)
+    {
+      NS_LOG_INFO ("adding this control eNB to the EPC");
+      m_epcHelper->AddEnb (n, dev, dev->GetCellId ());
+      Ptr<EpcEnbApplication> enbApp = n->GetApplication (0)->GetObject<EpcEnbApplication> ();
+      NS_ASSERT_MSG (enbApp != 0, "cannot retrieve EpcEnbApplication");
+
+      // S1 SAPs
+      rrc->SetS1SapProvider (enbApp->GetS1SapProvider ());
+      enbApp->SetS1SapUser (rrc->GetS1SapUser ());
+
+      // X2 SAPs
+      Ptr<EpcX2> x2 = n->GetObject<EpcX2> ();
+      x2->SetEpcX2SapUser (rrc->GetEpcX2SapUser ());
+      rrc->SetEpcX2SapProvider (x2->GetEpcX2SapProvider ());
+    }
+
+  return dev;
+}
 
 Ptr<NetDevice>
 LteHelper::InstallSingleEnbDevice (Ptr<Node> n)
 {
 
-  NS_ABORT_MSG_IF (m_cellIdCounter == 65535, "max num eNBs exceeded");
-  uint16_t cellId = ++m_cellIdCounter;
+  NS_ABORT_MSG_IF (m_cellIdUserCounter == 32767, "max num user eNBs exceeded");
+  uint16_t cellId = ++m_cellIdUserCounter;
 
   Ptr<LteSpectrumPhy> dlPhy = CreateObject<LteSpectrumPhy> ();
   Ptr<LteSpectrumPhy> ulPhy = CreateObject<LteSpectrumPhy> ();

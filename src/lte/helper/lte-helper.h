@@ -281,6 +281,14 @@ public:
   void SetSpectrumChannelAttribute (std::string n, const AttributeValue &v);
 
   /**
+   * Create a set of eNodeB devices including one control eNodeB device.
+   *
+   * \param c the node container where the devices are to be installed
+   * \return the NetDeviceContainer with the newly created devices
+   */
+  NetDeviceContainer InstallSeparationEnbDevice (NodeContainer c);
+
+  /**
    * Create a set of eNodeB devices.
    *
    * \param c the node container where the devices are to be installed
@@ -596,6 +604,13 @@ protected:
 
 private:
   /**
+   * Create an control eNodeB device (LteEnbNetDevice) on the given node.
+   * \param n the node where the device is to be installed
+   * \return pointer to the created device
+   */
+  Ptr<NetDevice> InstallSingleCtrlEnbDevice (Ptr<Node> n);
+
+  /**
    * Create an eNodeB device (LteEnbNetDevice) on the given node.
    * \param n the node where the device is to be installed
    * \return pointer to the created device
@@ -709,11 +724,17 @@ private:
    */
   uint64_t m_imsiCounter;
   /**
-   * Keep track of the number of cell ID allocated. Increases by one every time
-   * a new eNodeB is installed (by InstallSingleEnbDevice()). The first eNodeB
-   * will have a cell ID of 1. The maximum number of eNodeB is 65535.
+   * Keep track of the number of control cell ID allocated. Increases by one every time
+   * a new eNodeB is installed (by InstallSingleCtrEnbDevice()). The first eNodeB
+   * will have a cell ID of 32768. The maximum number of eNodeB is 65535.
    */
-  uint16_t m_cellIdCounter;
+  uint16_t m_cellIdCtrlCounter;
+  /**
+   * Keep track of the number of user cell ID allocated. Increases by one every time
+   * a new eNodeB is installed (by InstallSingleEnbDevice()). The first eNodeB
+   * will have a cell ID of 1. The maximum number of eNodeB is 32768.
+   */
+  uint16_t m_cellIdUserCounter;
 
   /**
    * The `UseIdealRrc` attribute. If true, LteRrcProtocolIdeal will be used for

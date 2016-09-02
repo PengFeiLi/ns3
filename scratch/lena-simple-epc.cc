@@ -45,14 +45,16 @@ int
 main (int argc, char *argv[])
 {
 
-  uint16_t numberOfNodes = 2;
+  uint16_t numberOfUsNodes = 2;
+  uint16_t numberOfUeNodes = 2;
   double simTime = 1.1;
   double distance = 60.0;
   double interPacketInterval = 100;
 
   // Command line arguments
   CommandLine cmd;
-  cmd.AddValue("numberOfNodes", "Number of eNodeBs + UE pairs", numberOfNodes);
+  cmd.AddValue("numberOfUsNodes", "Number of User eNodeBs", numberOfUsNodes);
+  cmd.AddValue("numberOfUeNodes", "Number of UEs", numberOfUeNodes);
   cmd.AddValue("simTime", "Total duration of the simulation [s])", simTime);
   cmd.AddValue("distance", "Distance between eNBs [m]", distance);
   cmd.AddValue("interPacketInterval", "Inter packet interval [ms])", interPacketInterval);
@@ -95,12 +97,13 @@ main (int argc, char *argv[])
 
   NodeContainer ueNodes;
   NodeContainer enbNodes;
-  enbNodes.Create(numberOfNodes);
-  ueNodes.Create(numberOfNodes);
+  //plus one control station
+  enbNodes.Create(numberOfUsNodes + 1);
+  ueNodes.Create(numberOfUeNodes);
 
   // Install Mobility Model
   Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator> ();
-  for (uint16_t i = 0; i < numberOfNodes; i++)
+  for (uint16_t i = 0; i < enbNodes.GetN(); i++)
     {
       positionAlloc->Add (Vector(distance * i, 0, 0));
     }
@@ -111,7 +114,7 @@ main (int argc, char *argv[])
   mobility.Install(ueNodes);
 
   // Install LTE Devices to the nodes
-  NetDeviceContainer enbLteDevs = lteHelper->InstallEnbDevice (enbNodes);
+  NetDeviceContainer enbLteDevs = lteHelper->InstallSeparationEnbDevice (enbNodes);
   NetDeviceContainer ueLteDevs = lteHelper->InstallUeDevice (ueNodes);
 
   // Install the IP stack on the UEs
@@ -128,11 +131,12 @@ main (int argc, char *argv[])
     }
 
   // Attach one UE per eNodeB
-  for (uint16_t i = 0; i < numberOfNodes; i++)
-      {
-        lteHelper->Attach (ueLteDevs.Get(i), enbLteDevs.Get(i));
-        // side effect: the default EPS bearer will be activated
-      }
+//  for (uint16_t i = 0; i < numberOfNodes; i++)
+//      {
+//        lteHelper->Attach (ueLteDevs.Get(i), enbLteDevs.Get(i));
+//        // side effect: the default EPS bearer will be activated
+//      }
+  lteHelper->Attach (ueLteDevs);
 
 
   // Install and start applications on UEs and remote host
