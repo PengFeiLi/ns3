@@ -45,7 +45,8 @@ int
 main (int argc, char *argv[])
 {
 
-  uint16_t numberOfUsNodes = 2;
+  uint16_t numberOfClusters = 2;
+  uint16_t nodesPerCluster = 2;
   uint16_t numberOfUeNodes = 2;
   double simTime = 1.1;
   double distance = 60.0;
@@ -53,7 +54,8 @@ main (int argc, char *argv[])
 
   // Command line arguments
   CommandLine cmd;
-  cmd.AddValue("numberOfUsNodes", "Number of User eNodeBs", numberOfUsNodes);
+  cmd.AddValue("numberOfClusters", "Number of clusters", numberOfClusters);
+  cmd.AddValue("nodesPerCluster", "Number of nodes per cluster excluding control node", nodesPerCluster);  
   cmd.AddValue("numberOfUeNodes", "Number of UEs", numberOfUeNodes);
   cmd.AddValue("simTime", "Total duration of the simulation [s])", simTime);
   cmd.AddValue("distance", "Distance between eNBs [m]", distance);
@@ -97,8 +99,8 @@ main (int argc, char *argv[])
 
   NodeContainer ueNodes;
   NodeContainer enbNodes;
-  //plus one control station
-  enbNodes.Create(numberOfUsNodes + 1);
+  //plus one control station per cluster
+  enbNodes.Create((nodesPerCluster + 1) * numberOfClusters);
   ueNodes.Create(numberOfUeNodes);
 
   // Install Mobility Model
@@ -114,7 +116,7 @@ main (int argc, char *argv[])
   mobility.Install(ueNodes);
 
   // Install LTE Devices to the nodes
-  NetDeviceContainer enbLteDevs = lteHelper->InstallSeparationEnbDevice (enbNodes);
+  NetDeviceContainer enbLteDevs = lteHelper->InstallClusterEnbDevice (enbNodes, numberOfClusters, nodesPerCluster);
   NetDeviceContainer ueLteDevs = lteHelper->InstallUeDevice (ueNodes);
 
   // Install the IP stack on the UEs

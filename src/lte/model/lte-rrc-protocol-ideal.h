@@ -119,6 +119,7 @@ private:
   void DoSendSystemInformation (LteRrcSap::SystemInformation msg);
   void SendSystemInformation (LteRrcSap::SystemInformation msg);
   void DoSendRrcConnectionSetup (uint16_t rnti, LteRrcSap::RrcConnectionSetup msg);
+  void DoSendRrcTestMsg (uint16_t rnti, LteRrcSap::RrcTestMsg msg);
   void DoSendRrcConnectionReconfiguration (uint16_t rnti, LteRrcSap::RrcConnectionReconfiguration msg);
   void DoSendRrcConnectionReestablishment (uint16_t rnti, LteRrcSap::RrcConnectionReestablishment msg);
   void DoSendRrcConnectionReestablishmentReject (uint16_t rnti, LteRrcSap::RrcConnectionReestablishmentReject msg);

@@ -319,6 +319,8 @@ public:
 
 private:
 
+  void SendTestMsgOverSrb0 ();
+
   /** 
    * Add a new LteDataRadioBearerInfo structure to the UeManager
    * 

@@ -326,6 +326,8 @@ private:
   void DoRecvSystemInformation (LteRrcSap::SystemInformation msg);
   /// Part of the RRC protocol. Implement the LteUeRrcSapProvider::RecvRrcConnectionSetup interface.
   void DoRecvRrcConnectionSetup (LteRrcSap::RrcConnectionSetup msg);
+  /// Part of the RRC protocol. Implement the LteUeRrcSapProvider::RecvRrcTestMsg interface.
+  void DoRecvRrcTestMsg (LteRrcSap::RrcTestMsg msg);
   /// Part of the RRC protocol. Implement the LteUeRrcSapProvider::RecvRrcConnectionReconfiguration interface.
   void DoRecvRrcConnectionReconfiguration (LteRrcSap::RrcConnectionReconfiguration msg);
   /// Part of the RRC protocol. Implement the LteUeRrcSapProvider::RecvRrcConnectionReestablishment interface.

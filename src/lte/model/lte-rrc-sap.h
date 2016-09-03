@@ -595,6 +595,12 @@ public:
     RadioResourceConfigDedicated radioResourceConfigDedicated;
   };
 
+  struct RrcTestMsg
+  {
+    uint8_t rrcTransactionIdentifier;
+    uint32_t id;
+  };
+
   struct RrcConnectionSetupCompleted
   {
     uint8_t rrcTransactionIdentifier;
@@ -764,6 +770,14 @@ public:
   virtual void RecvRrcConnectionSetup (RrcConnectionSetup msg) = 0;
 
   /**
+   * \brief Receive an RRCTestMsg message from the serving eNodeB
+   *        after an RRC connection established
+   *        (extension).
+   * \param msg the message
+   */
+  virtual void RecvRrcTestMsg (RrcTestMsg msg) = 0;
+
+  /**
    * \brief Receive an _RRCConnectionReconfiguration_ message from the serving eNodeB
    *        during an RRC connection reconfiguration procedure
    *        (Section 5.3.5 of TS 36.331).
@@ -840,6 +854,8 @@ public:
    * \param msg the message
    */
   virtual void SendRrcConnectionSetup (uint16_t rnti, RrcConnectionSetup msg) = 0;
+
+  virtual void SendRrcTestMsg (uint16_t rnti, RrcTestMsg msg) = 0;
 
   /**
    * \brief Send an _RRCConnectionReconfiguration_ message to a UE
@@ -1082,6 +1098,7 @@ public:
   virtual void CompleteSetup (CompleteSetupParameters params);
   virtual void RecvSystemInformation (SystemInformation msg);
   virtual void RecvRrcConnectionSetup (RrcConnectionSetup msg);
+  virtual void RecvRrcTestMsg (RrcTestMsg msg);
   virtual void RecvRrcConnectionReconfiguration (RrcConnectionReconfiguration msg);
   virtual void RecvRrcConnectionReestablishment (RrcConnectionReestablishment msg);
   virtual void RecvRrcConnectionReestablishmentReject (RrcConnectionReestablishmentReject msg);
@@ -1123,6 +1140,13 @@ void
 MemberLteUeRrcSapProvider<C>::RecvRrcConnectionSetup (RrcConnectionSetup msg)
 {
   Simulator::ScheduleNow (&C::DoRecvRrcConnectionSetup, m_owner, msg);
+}
+
+template <class C>
+void
+MemberLteUeRrcSapProvider<C>::RecvRrcTestMsg (RrcTestMsg msg)
+{
+  Simulator::ScheduleNow (&C::DoRecvRrcTestMsg, m_owner, msg);
 }
 
 template <class C>
@@ -1178,6 +1202,7 @@ public:
   virtual void RemoveUe (uint16_t rnti);
   virtual void SendSystemInformation (SystemInformation msg);
   virtual void SendRrcConnectionSetup (uint16_t rnti, RrcConnectionSetup msg);
+  virtual void SendRrcTestMsg (uint16_t rnti, RrcTestMsg msg);
   virtual void SendRrcConnectionReconfiguration (uint16_t rnti, RrcConnectionReconfiguration msg);
   virtual void SendRrcConnectionReestablishment (uint16_t rnti, RrcConnectionReestablishment msg);
   virtual void SendRrcConnectionReestablishmentReject (uint16_t rnti, RrcConnectionReestablishmentReject msg);
@@ -1230,6 +1255,13 @@ void
 MemberLteEnbRrcSapUser<C>::SendRrcConnectionSetup (uint16_t rnti, RrcConnectionSetup msg)
 {
   m_owner->DoSendRrcConnectionSetup (rnti, msg);
+}
+
+template <class C>
+void
+MemberLteEnbRrcSapUser<C>::SendRrcTestMsg (uint16_t rnti, RrcTestMsg msg)
+{
+  m_owner->DoSendRrcTestMsg (rnti, msg);
 }
 
 template <class C>

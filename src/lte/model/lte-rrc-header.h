@@ -299,6 +299,36 @@ private:
 };
 
 /**
+* This class manages the serialization/deserialization of RrcTestMsgHeader IE
+*/
+class RrcTestMsgHeader : public RrcDlCcchMessage
+{
+public:
+  RrcTestMsgHeader ();
+  ~RrcTestMsgHeader ();
+
+  // Inherited from RrcAsn1Header 
+  void PreSerialize () const;
+  uint32_t Deserialize (Buffer::Iterator bIterator);
+  void Print (std::ostream &os) const;
+
+  /**
+  * Receives a RrcTestMsgHeader IE and stores the contents into the class attributes
+  * @param msg The information element to parse
+  */
+  void SetMessage (LteRrcSap::RrcTestMsg msg);
+
+  /**
+  * Returns a RrcTestMsgHeader IE from the values in the class attributes
+  * @return A RrcTestMsg, as defined in LteRrcSap
+  */
+  LteRrcSap::RrcTestMsg GetMessage () const;
+
+private:
+  uint32_t m_id;
+};
+
+/**
 * This class manages the serialization/deserialization of RrcConnectionSetupComplete IE
 */
 class RrcConnectionSetupCompleteHeader : public RrcUlDcchMessage

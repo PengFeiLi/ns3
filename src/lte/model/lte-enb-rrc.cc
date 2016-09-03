@@ -860,6 +860,10 @@ UeManager::RecvRrcConnectionSetupCompleted (LteRrcSap::RrcConnectionSetupComplet
       StartDataRadioBearers ();
       SwitchToState (CONNECTED_NORMALLY);
       m_rrc->m_connectionEstablishedTrace (m_imsi, m_rrc->m_cellId, m_rnti);
+
+      LteRrcSap::RrcTestMsg tmsg;
+      tmsg.id = 10;
+      m_rrc->m_rrcSapUser->SendRrcTestMsg (m_rnti, tmsg);
       break;
 
     default:

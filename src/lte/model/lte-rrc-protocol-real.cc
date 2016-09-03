@@ -281,12 +281,14 @@ LteUeRrcProtocolReal::DoReceivePdcpPdu (Ptr<Packet> p)
   RrcConnectionReestablishmentRejectHeader rrcConnectionReestablishmentRejectHeader;
   RrcConnectionSetupHeader rrcConnectionSetupHeader;
   RrcConnectionRejectHeader rrcConnectionRejectHeader;
+  RrcTestMsgHeader rrcTestMsgHeader;
 
   // Declare possible messages
   LteRrcSap::RrcConnectionReestablishment rrcConnectionReestablishmentMsg;
   LteRrcSap::RrcConnectionReestablishmentReject rrcConnectionReestablishmentRejectMsg;
   LteRrcSap::RrcConnectionSetup rrcConnectionSetupMsg;
   LteRrcSap::RrcConnectionReject rrcConnectionRejectMsg;
+  LteRrcSap::RrcTestMsg rrcTestMsg;
 
   // Deserialize packet and call member recv function with appropiate structure
   switch ( rrcDlCcchMessage.GetMessageType () )
@@ -314,6 +316,12 @@ LteUeRrcProtocolReal::DoReceivePdcpPdu (Ptr<Packet> p)
       p->RemoveHeader (rrcConnectionSetupHeader);
       rrcConnectionSetupMsg = rrcConnectionSetupHeader.GetMessage ();
       m_ueRrcSapProvider->RecvRrcConnectionSetup (rrcConnectionSetupMsg);
+      break;
+    default:
+      // messageExtensionClass
+      p->RemoveHeader (rrcTestMsgHeader);
+      rrcTestMsg = rrcTestMsgHeader.GetMessage();
+      m_ueRrcSapProvider->RecvRrcTestMsg (rrcTestMsg);
       break;
     }
 }
@@ -556,6 +564,26 @@ LteEnbRrcProtocolReal::DoSendRrcConnectionSetup (uint16_t rnti, LteRrcSap::RrcCo
     {
       m_setupUeParametersMap[rnti].srb0SapProvider->TransmitPdcpPdu (transmitPdcpPduParameters);
     }
+}
+
+void
+LteEnbRrcProtocolReal::DoSendRrcTestMsg (uint16_t rnti, LteRrcSap::RrcTestMsg msg)
+{
+  NS_LOG_INFO ("Send RRC Test msg to rnti");
+
+  Ptr<Packet> packet = Create<Packet> ();
+
+  RrcTestMsgHeader rrcTestMsgHeader;
+  rrcTestMsgHeader.SetMessage (msg);
+
+  packet->AddHeader (rrcTestMsgHeader);
+
+  LteRlcSapProvider::TransmitPdcpPduParameters transmitPdcpPduParameters;
+  transmitPdcpPduParameters.pdcpPdu = packet;
+  transmitPdcpPduParameters.rnti = rnti;
+  transmitPdcpPduParameters.lcid = 0;
+
+  m_setupUeParametersMap[rnti].srb0SapProvider->TransmitPdcpPdu (transmitPdcpPduParameters);
 }
 
 void 

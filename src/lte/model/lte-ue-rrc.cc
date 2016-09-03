@@ -872,6 +872,12 @@ LteUeRrc::DoRecvRrcConnectionSetup (LteRrcSap::RrcConnectionSetup msg)
     }
 }
 
+void LteUeRrc::DoRecvRrcTestMsg (LteRrcSap::RrcTestMsg msg)
+{
+  NS_LOG_FUNCTION (this << " RNTI " << m_rnti);
+  NS_LOG_INFO ("receive test msg, id " << msg.id);
+}
+
 void
 LteUeRrc::DoRecvRrcConnectionReconfiguration (LteRrcSap::RrcConnectionReconfiguration msg)
 {

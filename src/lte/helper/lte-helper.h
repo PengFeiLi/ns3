@@ -281,14 +281,6 @@ public:
   void SetSpectrumChannelAttribute (std::string n, const AttributeValue &v);
 
   /**
-   * Create a set of eNodeB devices including one control eNodeB device.
-   *
-   * \param c the node container where the devices are to be installed
-   * \return the NetDeviceContainer with the newly created devices
-   */
-  NetDeviceContainer InstallSeparationEnbDevice (NodeContainer c);
-
-  /**
    * Create a set of eNodeB devices.
    *
    * \param c the node container where the devices are to be installed
@@ -604,13 +596,6 @@ protected:
 
 private:
   /**
-   * Create an control eNodeB device (LteEnbNetDevice) on the given node.
-   * \param n the node where the device is to be installed
-   * \return pointer to the created device
-   */
-  Ptr<NetDevice> InstallSingleCtrlEnbDevice (Ptr<Node> n);
-
-  /**
    * Create an eNodeB device (LteEnbNetDevice) on the given node.
    * \param n the node where the device is to be installed
    * \return pointer to the created device
@@ -752,6 +737,17 @@ private:
    * DL-CQI will be calculated from PDCCH as signal and PDCCH as interference.
    */
   bool m_usePdschForCqiGeneration;
+
+public:
+    NetDeviceContainer InstallClusterEnbDevice (NodeContainer c, uint16_t numberOfClusters, uint16_t nodesPerCluster);
+
+private:
+    Ptr<NetDevice> InstallBaseEnbDevice (Ptr<Node> n, uint16_t cellId);
+    Ptr<NetDevice> InstallMacroEnbDevice (Ptr<Node> n, uint16_t cluster);
+    Ptr<NetDevice> InstallSmallEnbDevice (Ptr<Node> n, uint16_t cluster, uint16_t inode);
+
+    uint16_t GetMacroCellId (uint16_t cluster);
+    uint16_t GetSmallCellId (uint16_t cluster, uint16_t inode);
 
 }; // end of `class LteHelper`
 

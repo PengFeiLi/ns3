@@ -4210,6 +4210,69 @@ RrcConnectionSetupHeader::GetRadioResourceConfigDedicated () const
   return m_radioResourceConfigDedicated;
 }
 
+//////////////////// RrcTestMsgHeader class ////////////////////////
+
+RrcTestMsgHeader::RrcTestMsgHeader ()
+{
+  m_messageType = -1;
+}
+
+RrcTestMsgHeader::~RrcTestMsgHeader ()
+{
+}
+
+void
+RrcTestMsgHeader::Print (std::ostream &os) const
+{
+  os << "id: " << (int) m_id << std::endl;
+}
+
+void
+RrcTestMsgHeader::PreSerialize () const
+{
+  m_serializationResult = Buffer();
+
+  SerializeDlCcchMessage (-1);
+
+  // Serialize　
+  SerializeInteger (m_id,0,15);
+
+  // Finish serialization
+  FinalizeSerialization ();
+  
+}
+
+uint32_t
+RrcTestMsgHeader::Deserialize (Buffer::Iterator bIterator)
+{
+  std::bitset<0> bitset0;
+  int n;
+
+  bIterator = DeserializeSequence (&bitset0,false,bIterator);
+  bIterator = DeserializeChoice (2,false,&n,bIterator);
+  bIterator = DeserializeSequence (&bitset0,false,bIterator);
+
+  bIterator = DeserializeInteger (&n,0,15,bIterator);
+  m_id = n;
+
+  return GetSerializedSize ();
+}
+
+void
+RrcTestMsgHeader::SetMessage (LteRrcSap::RrcTestMsg msg)
+{
+  m_id = msg.id;
+}
+
+LteRrcSap::RrcTestMsg
+RrcTestMsgHeader::GetMessage () const
+{
+  LteRrcSap::RrcTestMsg msg;
+  msg.id = m_id;
+
+  return msg;
+}
+
 //////////////////// RrcConnectionSetupCompleteHeader class ////////////////////////
 
 RrcConnectionSetupCompleteHeader::RrcConnectionSetupCompleteHeader ()
@@ -6427,10 +6490,19 @@ void
 RrcDlCcchMessage::SerializeDlCcchMessage (int messageType) const
 {
   SerializeSequence (std::bitset<0> (),false);
-  // Choose c1
-  SerializeChoice (2,0,false);
-  // Choose message type
-  SerializeChoice (4,messageType,false);
+
+  if(messageType != -1)
+  {
+    // Choose c1
+    SerializeChoice (2,0,false);
+    // Choose message type
+    SerializeChoice (4,messageType,false);
+  } else {
+    // Choose messageClassExtension
+    SerializeChoice (2,1,false);
+    // Serialize messageClassExtension
+    SerializeSequence (std::bitset<0> (),false);
+  }
 }
 
 } // namespace ns3
