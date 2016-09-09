@@ -75,7 +75,9 @@ class LteUeRrc : public Object
   friend class LtePdcpSpecificLtePdcpSapUser<LteUeRrc>;
   friend class MemberLteAsSapProvider<LteUeRrc>;
   friend class MemberLteUeCphySapUser<LteUeRrc>;
+  friend class SmallLteUeCphySapUser<LteUeRrc>;
   friend class MemberLteUeRrcSapProvider<LteUeRrc>;
+  friend class SmallLteUeRrcSapProvider<LteUeRrc>;
 
 public:
 
@@ -944,6 +946,87 @@ private:
    *        connection establishment procedure has failed.
    */
   void ConnectionTimeout ();
+
+private:
+  State m_smallState;
+  uint16_t m_smallCellId;
+
+
+  LteUeCphySapUser::UeMeasurementsParameters m_smallUeMeasurementsList;
+  std::map<uint16_t, MeasValues> m_smallStoredMeasValues;
+  VarMeasConfig m_smallVarMeasConfig;
+  std::set<uint16_t> m_smallAcceptableCell;
+
+
+  uint8_t m_smallDlBandwidth;
+  uint8_t m_smallUlBandwidth;
+  uint16_t m_smallDlEarfcn;
+  uint16_t m_smallUlEarfcn;
+
+
+  bool m_hasReceivedSmallMib;
+  bool m_hasReceivedSmallSib1;
+  bool m_hasReceivedSmallSib2;
+  LteRrcSap::SystemInformationBlockType1 m_smallLastSib1;
+  LteRrcSap::SystemInformation m_smallLastSI;
+
+
+  LteUeCphySapUser* m_smallCphySapUser;
+  LteUeCphySapProvider* m_smallCphySapProvider;
+
+  LteUeRrcSapUser* m_smallRrcSapUser;
+  LteUeRrcSapProvider* m_smallRrcSapProvider;
+
+  LteUeCmacSapUser* m_smallCmacSapUser;
+  LteUeCmacSapProvider* m_smallCmacSapProvider;
+
+  LteMacSapProvider* m_smallMacSapProvider;
+  LtePdcpSapUser* m_smallDrbPdcpSapUser;
+
+  EventId m_smallConnectionTimeout;
+
+
+  bool isMacroCell (uint16_t cellId);
+  bool isSmallCell (uint16_t cellId);
+  bool isBelongTo (uint16_t smallCellId, uint16_t macroCellId);
+  bool inOneGroup (uint16_t cellId1, uint16_t cellId2);
+
+
+  void SmallSwitchToState (State newState);
+  void SmallSaveUeMeasurements (uint16_t cellId, double rsrp, double rsrq,
+                              bool useLayer3Filtering);
+  void SmallSynchronizeToStrongestCell ();
+  void SmallEvaluateCellForSelection ();
+  void StartSmallCellSelection ();
+  void StartSmallConnection ();
+  void ResetSmallCell ();
+
+  void SmallConnectionTimeout ();
+
+
+  void DoReportSmallUeMeasurements (LteUeCphySapUser::UeMeasurementsParameters params);
+  void DoRecvSmallMasterInformationBlock (uint16_t cellId,
+                                  LteRrcSap::MasterInformationBlock msg);
+  void DoRecvSmallSystemInformationBlockType1 (uint16_t cellId,
+                                  LteRrcSap::SystemInformationBlockType1 msg);
+  void DoRecvSmallSystemInformation (LteRrcSap::SystemInformation msg);
+
+
+  void DoSendRrcSmallConnectionRequest ();
+  void DoSendScInfoRequest (uint16_t cellId);
+
+
+public:
+  uint16_t GetSmallCellId () const;
+
+  LteUeCphySapUser* GetSmallLteUeCphySapUser ();
+  LteUeRrcSapProvider* GetSmallLteUeRrcSapProvider ();
+  LteUeCmacSapUser* GetSmallLteUeCmacSapUser ();
+
+  void SetSmallLteUeCphySapProvider (LteUeCphySapProvider* s);
+  void SetSmallLteUeRrcSapUser (LteUeRrcSapUser* s);
+  void SetSmallLteUeCmacSapProvider (LteUeCmacSapProvider* s);
+  void SetSmallLteMacSapProvider (LteMacSapProvider * s);
 
 }; // end of class LteUeRrc
 

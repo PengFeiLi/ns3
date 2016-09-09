@@ -61,6 +61,7 @@ public:
   virtual void AddLc (uint8_t lcId, LteUeCmacSapProvider::LogicalChannelConfig lcConfig, LteMacSapUser* msu);
   virtual void RemoveLc (uint8_t lcId);
   virtual void Reset ();
+  virtual void SetRnti (uint16_t rnti);
 
 private:
   LteUeMac* m_mac;
@@ -107,6 +108,12 @@ void
 UeMemberLteUeCmacSapProvider::Reset ()
 {
   m_mac->DoReset ();
+}
+
+void
+UeMemberLteUeCmacSapProvider::SetRnti (uint16_t rnti)
+{
+  m_mac->DoSetRnti (rnti);
 }
 
 class UeMemberLteMacSapProvider : public LteMacSapProvider
@@ -340,10 +347,10 @@ LteUeMac::SendReportBufferStatus (void)
       std::map <uint8_t, LcInfo>::iterator lcInfoMapIt;
       lcInfoMapIt = m_lcInfoMap.find (lcid);
       NS_ASSERT (lcInfoMapIt !=  m_lcInfoMap.end ());
-      NS_ASSERT_MSG ((lcid != 0) || (((*it).second.txQueueSize == 0)
-                                     && ((*it).second.retxQueueSize == 0)
-                                     && ((*it).second.statusPduSize == 0)),
-                     "BSR should not be used for LCID 0");
+      // NS_ASSERT_MSG ((lcid != 0) || (((*it).second.txQueueSize == 0)
+      //                                && ((*it).second.retxQueueSize == 0)
+      //                                && ((*it).second.statusPduSize == 0)),
+      //                "BSR should not be used for LCID 0");
       uint8_t lcg = lcInfoMapIt->second.lcConfig.logicalChannelGroup;
       queue.at (lcg) += ((*it).second.txQueueSize + (*it).second.retxQueueSize + (*it).second.statusPduSize);
     }

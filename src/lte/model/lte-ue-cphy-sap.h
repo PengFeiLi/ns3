@@ -390,6 +390,60 @@ MemberLteUeCphySapUser<C>::ReportUeMeasurements (LteUeCphySapUser::UeMeasurement
 }
 
 
+
+template <class C>
+class SmallLteUeCphySapUser : public LteUeCphySapUser
+{
+public:
+  SmallLteUeCphySapUser (C* owner);
+
+  // methods inherited from LteUeCphySapUser go here
+  virtual void RecvMasterInformationBlock (uint16_t cellId,
+                                           LteRrcSap::MasterInformationBlock mib);
+  virtual void RecvSystemInformationBlockType1 (uint16_t cellId,
+                                                LteRrcSap::SystemInformationBlockType1 sib1);
+  virtual void ReportUeMeasurements (LteUeCphySapUser::UeMeasurementsParameters params);
+
+private:
+  SmallLteUeCphySapUser ();
+  C* m_owner;
+};
+
+template <class C>
+SmallLteUeCphySapUser<C>::SmallLteUeCphySapUser (C* owner)
+  : m_owner (owner)
+{
+}
+
+template <class C>
+SmallLteUeCphySapUser<C>::SmallLteUeCphySapUser ()
+{
+}
+
+template <class C> 
+void 
+SmallLteUeCphySapUser<C>::RecvMasterInformationBlock (uint16_t cellId,
+                                                       LteRrcSap::MasterInformationBlock mib)
+{
+  m_owner->DoRecvSmallMasterInformationBlock (cellId, mib);
+}
+
+template <class C>
+void
+SmallLteUeCphySapUser<C>::RecvSystemInformationBlockType1 (uint16_t cellId,
+                                                            LteRrcSap::SystemInformationBlockType1 sib1)
+{
+  m_owner->DoRecvSmallSystemInformationBlockType1 (cellId, sib1);
+}
+
+template <class C>
+void
+SmallLteUeCphySapUser<C>::ReportUeMeasurements (LteUeCphySapUser::UeMeasurementsParameters params)
+{
+  m_owner->DoReportSmallUeMeasurements (params);
+}
+
+
 } // namespace ns3
 
 

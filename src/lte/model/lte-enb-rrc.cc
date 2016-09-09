@@ -850,6 +850,13 @@ UeManager::RecvRrcConnectionRequest (LteRrcSap::RrcConnectionRequest msg)
 }
 
 void
+UeManager::RecvRrcScInfoRequest (LteRrcSap::RrcScInfoRequest msg)
+{
+  NS_LOG_FUNCTION (this);
+  NS_LOG_INFO ("receive inforamtion request for " << msg.cellId << " from rnti " << m_rnti);
+}
+
+void
 UeManager::RecvRrcConnectionSetupCompleted (LteRrcSap::RrcConnectionSetupCompleted msg)
 {
   NS_LOG_FUNCTION (this);
@@ -863,6 +870,7 @@ UeManager::RecvRrcConnectionSetupCompleted (LteRrcSap::RrcConnectionSetupComplet
 
       LteRrcSap::RrcTestMsg tmsg;
       tmsg.id = 10;
+      // Simulator::Schedule (MilliSeconds(100), &LteEnbRrcSapUser::SendRrcTestMsg, m_rrc->m_rrcSapUser, m_rnti, tmsg);
       m_rrc->m_rrcSapUser->SendRrcTestMsg (m_rnti, tmsg);
       break;
 
@@ -1888,6 +1896,13 @@ LteEnbRrc::DoRecvRrcConnectionRequest (uint16_t rnti, LteRrcSap::RrcConnectionRe
 {
   NS_LOG_FUNCTION (this << rnti);
   GetUeManager (rnti)->RecvRrcConnectionRequest (msg);
+}
+
+void
+LteEnbRrc::DoRecvRrcScInfoRequest (uint16_t rnti, LteRrcSap::RrcScInfoRequest msg)
+{
+  NS_LOG_FUNCTION (this << rnti);
+  GetUeManager (rnti)->RecvRrcScInfoRequest (msg);
 }
 
 void

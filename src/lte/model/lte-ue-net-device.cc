@@ -78,6 +78,16 @@ TypeId LteUeNetDevice::GetTypeId (void)
                    PointerValue (),
                    MakePointerAccessor (&LteUeNetDevice::m_phy),
                    MakePointerChecker <LteUePhy> ())
+    .AddAttribute ("SmallLteUeMac",
+                   "The small cell MAC associated to this UeNetDevice",
+                   PointerValue (),
+                   MakePointerAccessor (&LteUeNetDevice::m_smallMac),
+                   MakePointerChecker <LteUeMac> ())
+    .AddAttribute ("SmallLteUePhy",
+                   "The small cell PHY associated to this UeNetDevice",
+                   PointerValue (),
+                   MakePointerAccessor (&LteUeNetDevice::m_smallPhy),
+                   MakePointerChecker <LteUePhy> ())
     .AddAttribute ("Imsi",
                    "International Mobile Subscriber Identity assigned to this UE",
                    UintegerValue (0),
@@ -164,6 +174,14 @@ LteUeNetDevice::GetMac (void) const
 }
 
 
+Ptr<LteUeMac>
+LteUeNetDevice::GetSmallMac (void) const
+{
+  NS_LOG_FUNCTION (this);
+  return m_smallMac;
+}
+
+
 Ptr<LteUeRrc>
 LteUeNetDevice::GetRrc (void) const
 {
@@ -177,6 +195,13 @@ LteUeNetDevice::GetPhy (void) const
 {
   NS_LOG_FUNCTION (this);
   return m_phy;
+}
+
+Ptr<LteUePhy>
+LteUeNetDevice::GetSmallPhy (void) const
+{
+  NS_LOG_FUNCTION (this);
+  return m_smallPhy;
 }
 
 Ptr<EpcUeNas>
@@ -246,6 +271,9 @@ LteUeNetDevice::DoInitialize (void)
   m_phy->Initialize ();
   m_mac->Initialize ();
   m_rrc->Initialize ();
+
+  m_smallPhy->Initialize ();
+  m_smallMac->Initialize ();
 }
 
 bool

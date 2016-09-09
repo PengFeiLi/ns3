@@ -4210,68 +4210,6 @@ RrcConnectionSetupHeader::GetRadioResourceConfigDedicated () const
   return m_radioResourceConfigDedicated;
 }
 
-//////////////////// RrcTestMsgHeader class ////////////////////////
-
-RrcTestMsgHeader::RrcTestMsgHeader ()
-{
-  m_messageType = -1;
-}
-
-RrcTestMsgHeader::~RrcTestMsgHeader ()
-{
-}
-
-void
-RrcTestMsgHeader::Print (std::ostream &os) const
-{
-  os << "id: " << (int) m_id << std::endl;
-}
-
-void
-RrcTestMsgHeader::PreSerialize () const
-{
-  m_serializationResult = Buffer();
-
-  SerializeDlCcchMessage (-1);
-
-  // Serialize　
-  SerializeInteger (m_id,0,15);
-
-  // Finish serialization
-  FinalizeSerialization ();
-  
-}
-
-uint32_t
-RrcTestMsgHeader::Deserialize (Buffer::Iterator bIterator)
-{
-  std::bitset<0> bitset0;
-  int n;
-
-  bIterator = DeserializeSequence (&bitset0,false,bIterator);
-  bIterator = DeserializeChoice (2,false,&n,bIterator);
-  bIterator = DeserializeSequence (&bitset0,false,bIterator);
-
-  bIterator = DeserializeInteger (&n,0,15,bIterator);
-  m_id = n;
-
-  return GetSerializedSize ();
-}
-
-void
-RrcTestMsgHeader::SetMessage (LteRrcSap::RrcTestMsg msg)
-{
-  m_id = msg.id;
-}
-
-LteRrcSap::RrcTestMsg
-RrcTestMsgHeader::GetMessage () const
-{
-  LteRrcSap::RrcTestMsg msg;
-  msg.id = m_id;
-
-  return msg;
-}
 
 //////////////////// RrcConnectionSetupCompleteHeader class ////////////////////////
 
@@ -6491,18 +6429,224 @@ RrcDlCcchMessage::SerializeDlCcchMessage (int messageType) const
 {
   SerializeSequence (std::bitset<0> (),false);
 
-  if(messageType != -1)
-  {
-    // Choose c1
-    SerializeChoice (2,0,false);
-    // Choose message type
-    SerializeChoice (4,messageType,false);
-  } else {
-    // Choose messageClassExtension
-    SerializeChoice (2,1,false);
-    // Serialize messageClassExtension
+  // Choose c1
+  SerializeChoice (2,0,false);
+  // Choose message type
+  SerializeChoice (4,messageType,false);
+}
+
+//////////////////////////// RrcDlCcchMessageExtension ////////////////////////
+RrcDlCcchMessageExtension::RrcDlCcchMessageExtension ()
+{
+}
+
+RrcDlCcchMessageExtension::~RrcDlCcchMessageExtension ()
+{
+}
+
+void
+RrcDlCcchMessageExtension::PreSerialize () const
+{
+  SerializeDlCcchMessageExtension (m_messageType);
+}
+
+uint32_t
+RrcDlCcchMessageExtension::Deserialize (Buffer::Iterator bIterator)
+{
+  DeserializeDlCcchMessageExtension (bIterator);
+  return 1;
+}
+
+void
+RrcDlCcchMessageExtension::Print (std::ostream &os) const
+{
+  os << "DL CCCH MSG EXTENSION TYPE " << m_messageType << std::endl;
+}
+
+void
+RrcDlCcchMessageExtension::SerializeDlCcchMessageExtension (int msgType) const
+{
     SerializeSequence (std::bitset<0> (),false);
-  }
+    SerializeChoice (2,1,false);
+    SerializeInteger (msgType, 0, 15);
+}
+
+Buffer::Iterator
+RrcDlCcchMessageExtension::DeserializeDlCcchMessageExtension (Buffer::Iterator bIterator)
+{
+  std::bitset<0> bitset0;
+  int n;
+
+  bIterator = DeserializeSequence (&bitset0,false,bIterator);
+  bIterator = DeserializeChoice (2,false,&n,bIterator);
+  bIterator = DeserializeInteger (&n, 0, 15, bIterator);
+  m_messageType = n;
+
+  return bIterator;
+}
+
+//////////////////// RrcTestMsgHeader class ////////////////////////
+
+RrcTestMsgHeader::RrcTestMsgHeader ()
+{
+}
+
+RrcTestMsgHeader::~RrcTestMsgHeader ()
+{
+}
+
+void
+RrcTestMsgHeader::Print (std::ostream &os) const
+{
+  os << "Test Msg id: " << (int) m_id << std::endl;
+}
+
+void
+RrcTestMsgHeader::PreSerialize () const
+{
+  m_serializationResult = Buffer();
+
+  SerializeDlCcchMessageExtension (0);
+
+  // Serialize　
+  SerializeInteger (m_id,0,15);
+
+  // Finish serialization
+  FinalizeSerialization ();
+  
+}
+
+uint32_t
+RrcTestMsgHeader::Deserialize (Buffer::Iterator bIterator)
+{
+  int n;
+
+  bIterator = DeserializeDlCcchMessageExtension (bIterator);
+  bIterator = DeserializeInteger (&n,0,15,bIterator);
+  m_id = n;
+
+  return GetSerializedSize ();
+}
+
+void
+RrcTestMsgHeader::SetMessage (LteRrcSap::RrcTestMsg msg)
+{
+  m_id = msg.id;
+}
+
+LteRrcSap::RrcTestMsg
+RrcTestMsgHeader::GetMessage () const
+{
+  LteRrcSap::RrcTestMsg msg;
+  msg.id = m_id;
+
+  return msg;
+}
+
+//////////////////////////// RrcUlCcchMessageExtension ////////////////////////
+RrcUlCcchMessageExtension::RrcUlCcchMessageExtension ()
+{
+}
+
+RrcUlCcchMessageExtension::~RrcUlCcchMessageExtension ()
+{
+}
+
+void
+RrcUlCcchMessageExtension::PreSerialize () const
+{
+  SerializeUlCcchMessageExtension (m_messageType);
+}
+
+uint32_t
+RrcUlCcchMessageExtension::Deserialize (Buffer::Iterator bIterator)
+{
+  DeserializeUlCcchMessageExtension (bIterator);
+  return 1;
+}
+
+void
+RrcUlCcchMessageExtension::Print (std::ostream &os) const
+{
+  os << "UL CCCH MSG EXTENSION TYPE " << m_messageType << std::endl;
+}
+
+void
+RrcUlCcchMessageExtension::SerializeUlCcchMessageExtension (int messageType) const
+{
+    SerializeSequence (std::bitset<0> (),false);
+    SerializeChoice (2,1,false);
+    SerializeInteger (messageType, 0, 15);
+}
+
+Buffer::Iterator
+RrcUlCcchMessageExtension::DeserializeUlCcchMessageExtension (Buffer::Iterator bIterator)
+{
+  std::bitset<0> bitset0;
+  int n;
+
+  bIterator = DeserializeSequence (&bitset0,false,bIterator);
+  bIterator = DeserializeChoice (2,false,&n,bIterator);
+  bIterator = DeserializeInteger (&n, 0, 15, bIterator);
+  m_messageType = n;
+
+  return bIterator;
+}
+
+////////////////////RrcScInfoRequest class /////////////////////////
+RrcScInfoRequestHeader::RrcScInfoRequestHeader ()
+{
+}
+
+RrcScInfoRequestHeader::~RrcScInfoRequestHeader ()
+{
+}
+
+void
+RrcScInfoRequestHeader::PreSerialize () const
+{
+  m_serializationResult = Buffer();
+
+  SerializeUlCcchMessageExtension (1);
+
+  // Serialize　
+  SerializeInteger (m_cellId,0,0xFFFF);
+
+  // Finish serialization
+  FinalizeSerialization ();
+}
+
+uint32_t
+RrcScInfoRequestHeader::Deserialize (Buffer::Iterator bIterator)
+{
+  int n;
+
+  bIterator = DeserializeUlCcchMessageExtension (bIterator);
+  bIterator = DeserializeInteger (&n,0,0xFFFF,bIterator);
+  m_cellId = n;
+
+  return GetSerializedSize ();
+}
+
+void
+RrcScInfoRequestHeader::Print (std::ostream &os) const
+{
+  os << "Small Cell Information Request, cellId " << m_cellId << std::endl;
+}
+
+void
+RrcScInfoRequestHeader::SetMessage (LteRrcSap::RrcScInfoRequest msg)
+{
+  m_cellId = msg.cellId;
+}
+
+LteRrcSap::RrcScInfoRequest
+RrcScInfoRequestHeader::GetMessage () const
+{
+  LteRrcSap::RrcScInfoRequest msg;
+  msg.cellId = m_cellId;
+
+  return msg;
 }
 
 } // namespace ns3

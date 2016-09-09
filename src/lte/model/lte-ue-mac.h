@@ -99,6 +99,7 @@ private:
   void DoAddLc (uint8_t lcId, LteUeCmacSapProvider::LogicalChannelConfig lcConfig, LteMacSapUser* msu);
   void DoRemoveLc (uint8_t lcId);
   void DoReset ();
+  void DoSetRnti (uint16_t rnti) {m_rnti = rnti;}
 
   // forwarded from PHY SAP
   void DoReceivePhyPdu (Ptr<Packet> p);

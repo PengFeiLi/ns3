@@ -39,11 +39,13 @@ static const Time RRC_IDEAL_MSG_DELAY = MilliSeconds (0);
 
 NS_OBJECT_ENSURE_REGISTERED (LteUeRrcProtocolIdeal);
 
-LteUeRrcProtocolIdeal::LteUeRrcProtocolIdeal ()
+LteUeRrcProtocolIdeal::LteUeRrcProtocolIdeal (bool isMacroCell)
   :  m_ueRrcSapProvider (0),
      m_enbRrcSapProvider (0)
 {
   m_ueRrcSapUser = new MemberLteUeRrcSapUser<LteUeRrcProtocolIdeal> (this);
+
+  m_isMacroCell = isMacroCell;
 }
 
 LteUeRrcProtocolIdeal::~LteUeRrcProtocolIdeal ()
@@ -109,6 +111,18 @@ LteUeRrcProtocolIdeal::DoSendRrcConnectionRequest (LteRrcSap::RrcConnectionReque
                        msg);
 }
 
+void
+LteUeRrcProtocolIdeal::DoSendRrcScInfoRequest (LteRrcSap::RrcScInfoRequest msg)
+{
+  m_rnti = m_rrc->GetRnti ();
+    
+  Simulator::Schedule (RRC_IDEAL_MSG_DELAY, 
+                       &LteEnbRrcSapProvider::RecvRrcScInfoRequest,
+                       m_enbRrcSapProvider,
+                       m_rnti, 
+                       msg);
+}
+
 void 
 LteUeRrcProtocolIdeal::DoSendRrcConnectionSetupCompleted (LteRrcSap::RrcConnectionSetupCompleted msg)
 {
@@ -167,7 +181,11 @@ LteUeRrcProtocolIdeal::DoSendMeasurementReport (LteRrcSap::MeasurementReport msg
 void 
 LteUeRrcProtocolIdeal::SetEnbRrcSapProvider ()
 {
-  uint16_t cellId = m_rrc->GetCellId ();  
+  uint16_t cellId;
+  if (m_isMacroCell)
+    cellId = m_rrc->GetCellId ();
+  else
+    cellId = m_rrc->GetSmallCellId ();
 
   // walk list of all nodes to get the peer eNB
   Ptr<LteEnbNetDevice> enbDev;
@@ -348,6 +366,16 @@ LteEnbRrcProtocolIdeal::DoSendSystemInformation (LteRrcSap::SystemInformation ms
                                        ueRrc->GetLteUeRrcSapProvider (), 
                                        msg);          
                 }             
+
+              if (ueRrc->GetSmallCellId () == m_cellId)
+                {
+                  NS_LOG_LOGIC ("sending SI to IMSI " << ueDev->GetImsi ());
+                  ueRrc->GetSmallLteUeRrcSapProvider ()->RecvSystemInformation (msg);
+                  Simulator::Schedule (RRC_IDEAL_MSG_DELAY, 
+                                       &LteUeRrcSapProvider::RecvSystemInformation,
+                                       ueRrc->GetSmallLteUeRrcSapProvider (), 
+                                       msg);
+                }
             }
         }
     } 

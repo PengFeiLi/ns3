@@ -55,7 +55,7 @@ class LteUeRrcProtocolReal : public Object
   friend class LtePdcpSpecificLtePdcpSapUser<LteUeRrcProtocolReal>;
 
 public:
-  LteUeRrcProtocolReal ();
+  LteUeRrcProtocolReal (bool isMacroCell=true);
   virtual ~LteUeRrcProtocolReal ();
 
   // inherited from Object
@@ -72,6 +72,7 @@ private:
   // methods forwarded from LteUeRrcSapUser
   void DoSetup (LteUeRrcSapUser::SetupParameters params);
   void DoSendRrcConnectionRequest (LteRrcSap::RrcConnectionRequest msg);
+  void DoSendRrcScInfoRequest (LteRrcSap::RrcScInfoRequest msg);
   void DoSendRrcConnectionSetupCompleted (LteRrcSap::RrcConnectionSetupCompleted msg);
   void DoSendRrcConnectionReconfigurationCompleted (LteRrcSap::RrcConnectionReconfigurationCompleted msg);
   void DoSendRrcConnectionReestablishmentRequest (LteRrcSap::RrcConnectionReestablishmentRequest msg);
@@ -80,7 +81,10 @@ private:
 
   void SetEnbRrcSapProvider ();
   void DoReceivePdcpPdu (Ptr<Packet> p);
+  void DoReceivePdcpPdu2 (Ptr<Packet> p);
   void DoReceivePdcpSdu (LtePdcpSapUser::ReceivePdcpSduParameters params);
+
+  bool m_isMacroCell;
 
   Ptr<LteUeRrc> m_rrc;
   uint16_t m_rnti;
@@ -144,6 +148,7 @@ private:
 
   void DoReceivePdcpSdu (LtePdcpSapUser::ReceivePdcpSduParameters params);
   void DoReceivePdcpPdu (uint16_t rnti, Ptr<Packet> p);
+  void DoReceivePdcpPdu2 (uint16_t rnti, Ptr<Packet> p);
 
   uint16_t m_rnti;
   uint16_t m_cellId;

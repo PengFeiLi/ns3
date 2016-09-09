@@ -98,6 +98,8 @@ public:
    * 
    */
   virtual void Reset () = 0;
+
+  virtual void SetRnti (uint16_t rnti) = 0;
   
 };
 

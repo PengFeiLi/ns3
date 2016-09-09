@@ -49,7 +49,7 @@ class LteUeRrcProtocolIdeal : public Object
 
 public:
 
-  LteUeRrcProtocolIdeal ();
+  LteUeRrcProtocolIdeal (bool isMacroCell=true);
   virtual ~LteUeRrcProtocolIdeal ();
 
   // inherited from Object
@@ -67,6 +67,7 @@ private:
   // methods forwarded from LteUeRrcSapUser
   void DoSetup (LteUeRrcSapUser::SetupParameters params);
   void DoSendRrcConnectionRequest (LteRrcSap::RrcConnectionRequest msg);
+  void DoSendRrcScInfoRequest (LteRrcSap::RrcScInfoRequest msg);
   void DoSendRrcConnectionSetupCompleted (LteRrcSap::RrcConnectionSetupCompleted msg);
   void DoSendRrcConnectionReconfigurationCompleted (LteRrcSap::RrcConnectionReconfigurationCompleted msg);
   void DoSendRrcConnectionReestablishmentRequest (LteRrcSap::RrcConnectionReestablishmentRequest msg);
@@ -74,6 +75,8 @@ private:
   void DoSendMeasurementReport (LteRrcSap::MeasurementReport msg);
 
   void SetEnbRrcSapProvider ();
+
+  bool m_isMacroCell;
 
   Ptr<LteUeRrc> m_rrc;
   uint16_t m_rnti;

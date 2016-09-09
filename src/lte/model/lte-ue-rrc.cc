@@ -144,6 +144,21 @@ LteUeRrc::LteUeRrc ()
   m_rrcSapProvider = new MemberLteUeRrcSapProvider<LteUeRrc> (this);
   m_drbPdcpSapUser = new LtePdcpSpecificLtePdcpSapUser<LteUeRrc> (this);
   m_asSapProvider = new MemberLteAsSapProvider<LteUeRrc> (this);
+
+  m_smallState = IDLE_START;
+  m_smallCellId = 0;
+  m_hasReceivedSmallMib = false;
+  m_hasReceivedSmallSib1 = false;
+  m_hasReceivedSmallSib2 = false;
+
+  m_smallCphySapProvider = 0;
+  m_smallCmacSapProvider = 0;
+  m_smallRrcSapUser = 0;
+  m_smallMacSapProvider = 0;
+  m_smallCphySapUser = new SmallLteUeCphySapUser<LteUeRrc> (this);
+  m_smallCmacSapUser = new UeMemberLteUeCmacSapUser (this);
+  m_smallRrcSapProvider = new SmallLteUeRrcSapProvider<LteUeRrc> (this);
+  m_smallDrbPdcpSapUser = new LtePdcpSpecificLtePdcpSapUser<LteUeRrc> (this);
 }
 
 
@@ -421,6 +436,7 @@ LteUeRrc::DoInitialize (void)
 
   m_cmacSapProvider->AddLc (lcid, lcConfig, rlc->GetLteMacSapUser ());
 
+  //Small cell dont't need to setup SRB0
 }
 
 
@@ -596,6 +612,7 @@ LteUeRrc::DoStartCellSelection (uint16_t dlEarfcn)
   NS_ASSERT_MSG (m_state == IDLE_START,
                  "cannot start cell selection from state " << ToString (m_state));
   m_dlEarfcn = dlEarfcn;
+  m_smallDlEarfcn = dlEarfcn;
   m_cphySapProvider->StartCellSearch (dlEarfcn);
   SwitchToState (IDLE_CELL_SEARCH);
 }
@@ -766,6 +783,8 @@ LteUeRrc::DoReportUeMeasurements (LteUeCphySapUser::UeMeasurementsParameters par
   for (newMeasIt = params.m_ueMeasurementsList.begin ();
        newMeasIt != params.m_ueMeasurementsList.end (); ++newMeasIt)
     {
+      if (!isMacroCell (newMeasIt->m_cellId))
+        continue;
       SaveUeMeasurements (newMeasIt->m_cellId, newMeasIt->m_rsrp,
                           newMeasIt->m_rsrq, useLayer3Filtering);
     }
@@ -857,12 +876,13 @@ LteUeRrc::DoRecvRrcConnectionSetup (LteRrcSap::RrcConnectionSetup msg)
       {
         ApplyRadioResourceConfigDedicated (msg.radioResourceConfigDedicated);
         m_connectionTimeout.Cancel ();
-        SwitchToState (CONNECTED_NORMALLY);
         LteRrcSap::RrcConnectionSetupCompleted msg2;
         msg2.rrcTransactionIdentifier = msg.rrcTransactionIdentifier;
         m_rrcSapUser->SendRrcConnectionSetupCompleted (msg2);
         m_asSapUser->NotifyConnectionSuccessful ();
         m_connectionEstablishedTrace (m_imsi, m_cellId, m_rnti);
+        SwitchToState (CONNECTED_NORMALLY);
+        StartSmallCellSelection ();
       }
       break;
 
@@ -1058,6 +1078,13 @@ LteUeRrc::SynchronizeToStrongestCell ()
 
 } // end of void LteUeRrc::SynchronizeToStrongestCell ()
 
+void
+LteUeRrc::DoSendScInfoRequest (uint16_t cellId)
+{
+  LteRrcSap::RrcScInfoRequest rrcScInfoRequestMsg;
+  rrcScInfoRequestMsg.cellId = cellId;
+  m_rrcSapUser->SendRrcScInfoRequest (rrcScInfoRequestMsg);
+}
 
 void
 LteUeRrc::EvaluateCellForSelection ()
@@ -2859,6 +2886,85 @@ LteUeRrc::SwitchToState (State newState)
     case CONNECTED_HANDOVER:
     case CONNECTED_PHY_PROBLEM:
     case CONNECTED_REESTABLISHING:
+      if (newState == CONNECTED_NORMALLY)
+        StartSmallCellSelection ();
+      break;
+ 
+    default:
+      break;
+    }
+    if (newState != CONNECTED_NORMALLY && m_smallState != IDLE_CELL_SEARCH)
+      {
+        ResetSmallCell ();
+        SmallSwitchToState (IDLE_CELL_SEARCH);
+      }
+}
+
+bool
+LteUeRrc::isMacroCell (uint16_t cellId)
+{
+  return !(cellId & 0x003F);
+}
+
+bool
+LteUeRrc::isSmallCell (uint16_t cellId)
+{
+  return (cellId & 0x003F);
+}
+
+bool
+LteUeRrc::isBelongTo (uint16_t smallCellId, uint16_t macroCellId)
+{
+  return ((smallCellId & 0xFFC0) == macroCellId);
+}
+
+bool
+LteUeRrc::inOneGroup (uint16_t cellId1, uint16_t cellId2)
+{
+  return ((cellId1 & 0xFFC0) == (cellId2 & 0xFFC0));
+}
+
+void
+LteUeRrc::SmallSwitchToState (State newState)
+{
+  NS_LOG_FUNCTION (this << ToString (newState));
+  NS_ASSERT_MSG ((m_state == CONNECTED_NORMALLY || newState == IDLE_CELL_SEARCH),
+                    "must synchronize to a macro cell first");
+
+  State oldState = m_smallState;
+  m_smallState = newState;
+  NS_LOG_INFO (this << " IMSI " << m_imsi << " RNTI " << m_rnti << " UeRrc "
+                    << ToString (oldState) << " --> " << ToString (newState));
+
+  switch (newState)
+    {
+    case IDLE_START:
+      NS_FATAL_ERROR ("cannot switch to an initial state");
+      break;
+
+    case IDLE_CELL_SEARCH:
+    case IDLE_WAIT_MIB_SIB1:
+    case IDLE_WAIT_MIB:
+    case IDLE_WAIT_SIB1:
+      break;
+
+    case IDLE_CAMPED_NORMALLY:
+          SmallSwitchToState (IDLE_WAIT_SIB2);
+      break;
+
+    case IDLE_WAIT_SIB2:
+      if (m_hasReceivedSmallSib2)
+        {
+          StartSmallConnection ();
+        }
+      break;
+
+    case IDLE_RANDOM_ACCESS:
+    case IDLE_CONNECTING:
+    case CONNECTED_NORMALLY:
+    case CONNECTED_HANDOVER:
+    case CONNECTED_PHY_PROBLEM:
+    case CONNECTED_REESTABLISHING:
       break;
  
     default:
@@ -2866,8 +2972,420 @@ LteUeRrc::SwitchToState (State newState)
     }
 }
 
+LteUeCphySapUser*
+LteUeRrc::GetSmallLteUeCphySapUser ()
+{
+  NS_LOG_FUNCTION (this);
+  return m_smallCphySapUser;
+}
 
+LteUeRrcSapProvider*
+LteUeRrc::GetSmallLteUeRrcSapProvider ()
+{
+  NS_LOG_FUNCTION (this);
+  return m_smallRrcSapProvider;
+}
 
+LteUeCmacSapUser*
+LteUeRrc::GetSmallLteUeCmacSapUser ()
+{
+  NS_LOG_FUNCTION (this);
+  return m_smallCmacSapUser;
+}
+
+void
+LteUeRrc::SetSmallLteUeCphySapProvider (LteUeCphySapProvider* s)
+{
+  NS_LOG_FUNCTION (this << s);
+  m_smallCphySapProvider = s;
+}
+
+void
+LteUeRrc::SetSmallLteUeRrcSapUser (LteUeRrcSapUser * s)
+{
+  NS_LOG_FUNCTION (this << s);
+  m_smallRrcSapUser = s;
+}
+
+void
+LteUeRrc::SetSmallLteUeCmacSapProvider (LteUeCmacSapProvider* s)
+{
+  NS_LOG_FUNCTION (this);
+  m_smallCmacSapProvider = s;
+}
+
+void
+LteUeRrc::SetSmallLteMacSapProvider (LteMacSapProvider * s)
+{
+  NS_LOG_FUNCTION (this << s);
+  m_smallMacSapProvider = s;
+}
+
+uint16_t
+LteUeRrc::GetSmallCellId () const
+{
+  return m_smallCellId;
+}
+
+void
+LteUeRrc::DoReportSmallUeMeasurements (LteUeCphySapUser::UeMeasurementsParameters params)
+{
+  NS_LOG_FUNCTION (this);
+
+  bool useLayer3Filtering = (m_state == CONNECTED_NORMALLY && m_smallState == CONNECTED_NORMALLY);
+
+  std::vector <LteUeCphySapUser::UeMeasurementsElement>::iterator newMeasIt;
+  for (newMeasIt = params.m_ueMeasurementsList.begin ();
+       newMeasIt != params.m_ueMeasurementsList.end (); ++newMeasIt)
+    {
+      if (!isSmallCell (newMeasIt->m_cellId))
+        continue;
+      SmallSaveUeMeasurements (newMeasIt->m_cellId, newMeasIt->m_rsrp,
+                          newMeasIt->m_rsrq, useLayer3Filtering);
+    }
+
+  if (m_state == CONNECTED_NORMALLY && m_smallState == IDLE_CELL_SEARCH)
+    {
+      // start decoding BCH
+      SmallSynchronizeToStrongestCell ();
+    }
+  // else
+  //   {
+  //     std::map<uint8_t, LteRrcSap::MeasIdToAddMod>::iterator measIdIt;
+  //     for (measIdIt = m_varMeasConfig.measIdList.begin ();
+  //          measIdIt != m_varMeasConfig.measIdList.end (); ++measIdIt)
+  //       {
+  //         MeasurementReportTriggering (measIdIt->first);
+  //       }
+  //   }
+}
+
+void
+LteUeRrc::SmallSaveUeMeasurements (uint16_t cellId, double rsrp, double rsrq,
+                              bool useLayer3Filtering)
+{
+  NS_LOG_FUNCTION (this << cellId << rsrp << rsrq << useLayer3Filtering);
+
+  std::map<uint16_t, MeasValues>::iterator storedMeasIt = m_smallStoredMeasValues.find (cellId);
+
+  if (storedMeasIt != m_smallStoredMeasValues.end ())
+    {
+      if (useLayer3Filtering)
+        {
+          // F_n = (1-a) F_{n-1} + a M_n
+          storedMeasIt->second.rsrp = (1 - m_smallVarMeasConfig.aRsrp) * storedMeasIt->second.rsrp
+            + m_smallVarMeasConfig.aRsrp * rsrp;
+
+          if (std::isnan (storedMeasIt->second.rsrq))
+            {
+              // the previous RSRQ measurements provided UE PHY are invalid
+              storedMeasIt->second.rsrq = rsrq; // replace it with unfiltered value
+            }
+          else
+            {
+              storedMeasIt->second.rsrq = (1 - m_smallVarMeasConfig.aRsrq) * storedMeasIt->second.rsrq
+                + m_smallVarMeasConfig.aRsrq * rsrq;
+            }
+        }
+      else
+        {
+          storedMeasIt->second.rsrp = rsrp;
+          storedMeasIt->second.rsrq = rsrq;
+        }
+    }
+  else
+    {
+      // first value is always unfiltered
+      MeasValues v;
+      v.rsrp = rsrp;
+      v.rsrq = rsrq;
+      std::pair<uint16_t, MeasValues> val (cellId, v);
+      std::pair<std::map<uint16_t, MeasValues>::iterator, bool>
+        ret = m_smallStoredMeasValues.insert (val);
+      NS_ASSERT_MSG (ret.second == true, "element already existed");
+      storedMeasIt = ret.first;
+    }
+
+  NS_LOG_DEBUG (this << " IMSI " << m_imsi << " small state " << ToString (m_smallState)
+                     << ", measured small cell " << m_smallCellId
+                     << ", new RSRP " << rsrp << " stored " << storedMeasIt->second.rsrp
+                     << ", new RSRQ " << rsrq << " stored " << storedMeasIt->second.rsrq);
+  storedMeasIt->second.timestamp = Simulator::Now ();
+
+} // end of void SmallSaveUeMeasurements
+
+void
+LteUeRrc::SmallSynchronizeToStrongestCell ()
+{
+  NS_LOG_FUNCTION (this);
+  NS_ASSERT (m_state == CONNECTED_NORMALLY && m_smallState == IDLE_CELL_SEARCH);
+
+  uint16_t maxRsrpCellId = 0;
+  double maxRsrp = -std::numeric_limits<double>::infinity ();
+
+  std::map<uint16_t, MeasValues>::iterator it;
+  for (it = m_smallStoredMeasValues.begin (); it != m_smallStoredMeasValues.end (); it++)
+    {
+      /*
+       * This block attempts to find a cell with strongest RSRP and has not
+       * yet been identified as "acceptable cell".
+       */
+      if (!isBelongTo (it->first, m_cellId))
+        continue;
+      if (maxRsrp < it->second.rsrp)
+        {
+          std::set<uint16_t>::const_iterator itCell;
+          itCell = m_smallAcceptableCell.find (it->first);
+          if (itCell == m_smallAcceptableCell.end ())
+            {
+              maxRsrpCellId = it->first;
+              maxRsrp = it->second.rsrp;
+            }
+        }
+    }
+
+  if (maxRsrpCellId == 0)
+    {
+      NS_LOG_WARN (this << " Cell search is unable to detect surrounding small cell to attach to");
+    }
+  else
+    {
+      NS_LOG_LOGIC (this << " cell " << maxRsrpCellId
+                         << " is the strongest untried surrounding small cell");
+      m_smallCphySapProvider->SynchronizeWithEnb (maxRsrpCellId, m_smallDlEarfcn);
+      SmallSwitchToState (IDLE_WAIT_MIB_SIB1);
+    }
+
+} // end of void LteUeRrc::SmallSynchronizeToStrongestCell ()
+
+void
+LteUeRrc::DoRecvSmallMasterInformationBlock (uint16_t cellId,
+                                        LteRrcSap::MasterInformationBlock msg)
+{ 
+  NS_LOG_FUNCTION ( this << cellId);
+
+  NS_LOG_INFO ("receive small cell MIB");
+
+  m_smallDlBandwidth = msg.dlBandwidth;
+  m_smallCphySapProvider->SetDlBandwidth (msg.dlBandwidth);
+  m_hasReceivedSmallMib = true;
+
+  switch (m_smallState)
+    {
+    case IDLE_WAIT_MIB:
+      // manual attachment
+      SmallSwitchToState (IDLE_WAIT_SIB2);
+      break;
+
+    case IDLE_WAIT_MIB_SIB1:
+      // automatic attachment from Idle mode cell selection
+      SmallSwitchToState (IDLE_WAIT_SIB1);
+      break;
+
+    default:
+      // do nothing extra
+      break;
+    }
+}
+
+void
+LteUeRrc::DoRecvSmallSystemInformationBlockType1 (uint16_t cellId,
+                                        LteRrcSap::SystemInformationBlockType1 msg)
+{
+
+  NS_LOG_INFO ("receive small cell SIB1");
+
+  switch (m_smallState)
+    {
+    case IDLE_WAIT_SIB1:
+      NS_ASSERT_MSG (cellId == msg.cellAccessRelatedInfo.cellIdentity,
+                     "Small cell identity in SIB1 does not match with the originating cell");
+      m_hasReceivedSmallSib1 = true;
+      m_smallLastSib1 = msg;
+      SmallEvaluateCellForSelection ();
+      break;
+
+    case IDLE_CAMPED_NORMALLY:
+    case IDLE_RANDOM_ACCESS:
+    case IDLE_CONNECTING:
+    case CONNECTED_NORMALLY:
+    case CONNECTED_HANDOVER:
+    case CONNECTED_PHY_PROBLEM:
+    case CONNECTED_REESTABLISHING:
+      NS_ASSERT_MSG (cellId == msg.cellAccessRelatedInfo.cellIdentity,
+                     "Small cell identity in SIB1 does not match with the originating cell");
+      m_hasReceivedSmallSib1 = true;
+      m_smallLastSib1 = msg;
+      break;
+
+    case IDLE_WAIT_MIB_SIB1:
+      // MIB has not been received, so ignore this SIB1
+      break;
+
+    default: // e.g. IDLE_START, IDLE_CELL_SEARCH, IDLE_WAIT_MIB, IDLE_WAIT_SIB2
+      // do nothing
+      break;
+    }
+}
+
+void
+LteUeRrc::SmallEvaluateCellForSelection ()
+{
+  NS_LOG_FUNCTION (this);
+  NS_ASSERT (m_smallState == IDLE_WAIT_SIB1);
+  NS_ASSERT (m_hasReceivedSmallMib);
+  NS_ASSERT (m_hasReceivedSmallSib1);
+  uint16_t cellId = m_smallLastSib1.cellAccessRelatedInfo.cellIdentity;
+
+  // Cell selection criteria evaluation
+
+  bool isSuitableCell = false;
+  bool isAcceptableCell = false;
+  std::map<uint16_t, MeasValues>::iterator storedMeasIt = m_smallStoredMeasValues.find (cellId);
+  double qRxLevMeas = storedMeasIt->second.rsrp;
+  double qRxLevMin = EutranMeasurementMapping::IeValue2ActualQRxLevMin (m_smallLastSib1.cellSelectionInfo.qRxLevMin);
+  NS_LOG_LOGIC (this << " small cell selection to cellId=" << cellId
+                     << " qrxlevmeas=" << qRxLevMeas << " dBm"
+                     << " qrxlevmin=" << qRxLevMin << " dBm");
+
+  if (qRxLevMeas - qRxLevMin > 0)
+    {
+      isAcceptableCell = true;
+
+      uint32_t cellCsgId = m_smallLastSib1.cellAccessRelatedInfo.csgIdentity;
+      bool cellCsgIndication = m_smallLastSib1.cellAccessRelatedInfo.csgIndication;
+
+      isSuitableCell = (cellCsgIndication == false) || (cellCsgId == m_csgWhiteList);
+
+      NS_LOG_LOGIC (this << " csg(ue/cell/indication)=" << m_csgWhiteList << "/"
+                         << cellCsgId << "/" << cellCsgIndication);
+    }
+
+  // Cell selection decision
+
+  if (isSuitableCell)
+    {
+      m_smallCellId = cellId;
+      m_smallCphySapProvider->SynchronizeWithEnb (cellId, m_smallDlEarfcn);
+      m_smallCphySapProvider->SetDlBandwidth (m_smallDlBandwidth);
+      SmallSwitchToState (IDLE_WAIT_SIB2);
+    }
+  else
+    {
+      // ignore the MIB and SIB1 received from this cell
+      m_hasReceivedSmallMib = false;
+      m_hasReceivedSmallSib1 = false;
+
+      if (isAcceptableCell)
+        {
+          /*
+           * The cells inserted into this list will not be considered for
+           * subsequent cell search attempt.
+           */
+          m_smallAcceptableCell.insert (cellId);
+        }
+
+      SmallSwitchToState (IDLE_CELL_SEARCH);
+      SmallSynchronizeToStrongestCell (); // retry to a different cell
+    }
+
+} // end of void LteUeRrc::SmallEvaluateCellForSelection ()
+
+void
+LteUeRrc::DoRecvSmallSystemInformation (LteRrcSap::SystemInformation msg)
+{
+  NS_LOG_FUNCTION (this << " RNTI " << m_rnti);
+
+  NS_LOG_INFO ("receive small cell SI " << ToString (m_smallState));
+
+  if (msg.haveSib2)
+    {
+      switch (m_smallState)
+        {
+        case IDLE_CAMPED_NORMALLY:
+        case IDLE_WAIT_SIB2:
+        case IDLE_RANDOM_ACCESS:
+        case IDLE_CONNECTING:
+        case CONNECTED_NORMALLY:
+        case CONNECTED_HANDOVER:
+        case CONNECTED_PHY_PROBLEM:
+        case CONNECTED_REESTABLISHING:
+          m_hasReceivedSmallSib2 = true;
+          m_smallUlBandwidth = msg.sib2.freqInfo.ulBandwidth;
+          m_smallUlEarfcn = msg.sib2.freqInfo.ulCarrierFreq;
+          LteUeCmacSapProvider::RachConfig rc;
+          rc.numberOfRaPreambles = msg.sib2.radioResourceConfigCommon.rachConfigCommon.preambleInfo.numberOfRaPreambles;
+          rc.preambleTransMax = msg.sib2.radioResourceConfigCommon.rachConfigCommon.raSupervisionInfo.preambleTransMax;
+          rc.raResponseWindowSize = msg.sib2.radioResourceConfigCommon.rachConfigCommon.raSupervisionInfo.raResponseWindowSize;
+          m_smallCmacSapProvider->ConfigureRach (rc);
+          m_smallCphySapProvider->ConfigureUplink (m_smallUlEarfcn, m_smallUlBandwidth);
+          m_smallCphySapProvider->ConfigureReferenceSignalPower(msg.sib2.radioResourceConfigCommon.pdschConfigCommon.referenceSignalPower);
+          if (m_smallState == IDLE_WAIT_SIB2)
+            {
+              StartSmallConnection ();
+            }
+          break;
+
+        default: // IDLE_START, IDLE_CELL_SEARCH, IDLE_WAIT_MIB, IDLE_WAIT_MIB_SIB1, IDLE_WAIT_SIB1
+          // do nothing
+          break;
+        }
+    }
+}
+
+void
+LteUeRrc::StartSmallCellSelection ()
+{
+  NS_LOG_FUNCTION (this << m_imsi << m_smallDlEarfcn);
+
+  ResetSmallCell ();
+  m_smallCphySapProvider->StartCellSearch (m_smallDlEarfcn);
+  SmallSwitchToState (IDLE_CELL_SEARCH);
+}
+
+void
+LteUeRrc::StartSmallConnection ()
+{
+  NS_LOG_FUNCTION ( this << m_imsi);
+  NS_ASSERT (m_hasReceivedSmallMib);
+  NS_ASSERT (m_hasReceivedSib1);
+  NS_ASSERT (m_hasReceivedSmallSib2);
+  
+  m_smallCmacSapProvider->SetRnti (m_rnti);
+  m_smallCphySapProvider->SetRnti (m_rnti);
+  DoSendRrcSmallConnectionRequest ();
+  SmallSwitchToState (IDLE_CONNECTING);
+
+  m_smallConnectionTimeout = Simulator::Schedule (
+                                  m_t300,
+                                  &LteUeRrc::SmallConnectionTimeout,
+                                  this);
+}
+
+void
+LteUeRrc::ResetSmallCell ()
+{
+  NS_LOG_FUNCTION ( this << "Reset small cell");
+
+  m_hasReceivedSmallMib = false;
+  m_hasReceivedSmallSib1 = false;
+  m_hasReceivedSmallSib2 = false;
+}
+
+void
+LteUeRrc::SmallConnectionTimeout ()
+{
+  NS_LOG_FUNCTION (this << m_imsi);
+  m_smallCmacSapProvider->Reset ();
+  m_hasReceivedSmallSib2 = false;
+  SmallSwitchToState (IDLE_WAIT_SIB2);
+}
+
+void
+LteUeRrc::DoSendRrcSmallConnectionRequest ()
+{
+
+}
 
 } // namespace ns3
 

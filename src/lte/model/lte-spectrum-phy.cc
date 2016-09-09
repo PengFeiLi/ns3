@@ -809,6 +809,21 @@ LteSpectrumPhy::StartRxDlCtrl (Ptr<LteSpectrumSignalParametersDlCtrlFrame> lteDl
             {
               NS_LOG_LOGIC (this << " not synchronizing with this signal (cellId=" 
                             << cellId  << ", m_cellId=" << m_cellId << ")");          
+              NS_LOG_INFO ( " not synchronizing with this signal (cellId=" 
+                            << cellId  << ", m_cellId=" << m_cellId << ")");     
+              std::list<Ptr<LteControlMessage> >::iterator it;
+              std::list<Ptr<LteControlMessage> > msgList = lteDlCtrlRxParams->ctrlMsgList;
+              for (it = msgList.begin (); it != msgList.end (); it++)
+              {
+                Ptr<LteControlMessage> msg = (*it);
+                if (msg->GetMessageType () == LteControlMessage::MIB)
+                {
+                  NS_LOG_INFO ("m_cellId " << m_cellId << " receive MIB from " << cellId);
+                } else if (msg->GetMessageType () == LteControlMessage::SIB1)
+                {
+                  NS_LOG_INFO ("m_cellId " << m_cellId << " receive SIB1 from " << cellId);
+                }
+              }
             }
           break;
           

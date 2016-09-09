@@ -155,6 +155,40 @@ protected:
   Buffer::Iterator DeserializeUlCcchMessage (Buffer::Iterator bIterator);
 };
 
+class RrcUlCcchMessageExtension : public RrcUlCcchMessage
+{
+public:
+  RrcUlCcchMessageExtension ();
+  ~RrcUlCcchMessageExtension ();
+
+  // Inherited from RrcUlCcchMessageExtension 
+  uint32_t Deserialize (Buffer::Iterator bIterator);
+  void Print (std::ostream &os) const;
+  void PreSerialize () const;
+
+protected:
+  void SerializeUlCcchMessageExtension (int messageType) const;
+  Buffer::Iterator DeserializeUlCcchMessageExtension (Buffer::Iterator bIterator);
+};
+
+class RrcScInfoRequestHeader : public RrcUlCcchMessageExtension
+{
+public:
+  RrcScInfoRequestHeader ();
+  ~RrcScInfoRequestHeader ();
+
+  void PreSerialize () const;
+  uint32_t Deserialize (Buffer::Iterator bIterator);
+  void Print (std::ostream &os) const;
+
+  void SetMessage (LteRrcSap::RrcScInfoRequest msg) ;
+
+  LteRrcSap::RrcScInfoRequest GetMessage () const;
+
+private:
+  uint16_t m_cellId;
+};
+
 /**
  * This class only serves to discriminate which message type has been received
  * in downlink (eNb to ue) for channel CCCH
@@ -173,6 +207,48 @@ public:
 protected:
   void SerializeDlCcchMessage (int msgType) const;
   Buffer::Iterator DeserializeDlCcchMessage (Buffer::Iterator bIterator);
+};
+
+class RrcDlCcchMessageExtension : public RrcDlCcchMessage
+{
+public:
+  RrcDlCcchMessageExtension ();
+  ~RrcDlCcchMessageExtension ();
+
+  uint32_t Deserialize (Buffer::Iterator bIterator);
+  void Print (std::ostream &os) const;
+  void PreSerialize () const;
+
+protected:
+  void SerializeDlCcchMessageExtension (int msgType) const;
+  Buffer::Iterator DeserializeDlCcchMessageExtension (Buffer::Iterator);
+};
+
+class RrcTestMsgHeader : public RrcDlCcchMessageExtension
+{
+public:
+  RrcTestMsgHeader ();
+  ~RrcTestMsgHeader ();
+
+  // Inherited from RrcAsn1Header 
+  void PreSerialize () const;
+  uint32_t Deserialize (Buffer::Iterator bIterator);
+  void Print (std::ostream &os) const;
+
+  /**
+  * Receives a RrcTestMsgHeader IE and stores the contents into the class attributes
+  * @param msg The information element to parse
+  */
+  void SetMessage (LteRrcSap::RrcTestMsg msg);
+
+  /**
+  * Returns a RrcTestMsgHeader IE from the values in the class attributes
+  * @return A RrcTestMsg, as defined in LteRrcSap
+  */
+  LteRrcSap::RrcTestMsg GetMessage () const;
+
+private:
+  uint32_t m_id;
 };
 
 /**
@@ -296,36 +372,6 @@ public:
 private:
   uint8_t m_rrcTransactionIdentifier;
   mutable LteRrcSap::RadioResourceConfigDedicated m_radioResourceConfigDedicated;
-};
-
-/**
-* This class manages the serialization/deserialization of RrcTestMsgHeader IE
-*/
-class RrcTestMsgHeader : public RrcDlCcchMessage
-{
-public:
-  RrcTestMsgHeader ();
-  ~RrcTestMsgHeader ();
-
-  // Inherited from RrcAsn1Header 
-  void PreSerialize () const;
-  uint32_t Deserialize (Buffer::Iterator bIterator);
-  void Print (std::ostream &os) const;
-
-  /**
-  * Receives a RrcTestMsgHeader IE and stores the contents into the class attributes
-  * @param msg The information element to parse
-  */
-  void SetMessage (LteRrcSap::RrcTestMsg msg);
-
-  /**
-  * Returns a RrcTestMsgHeader IE from the values in the class attributes
-  * @return A RrcTestMsg, as defined in LteRrcSap
-  */
-  LteRrcSap::RrcTestMsg GetMessage () const;
-
-private:
-  uint32_t m_id;
 };
 
 /**

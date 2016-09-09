@@ -589,6 +589,11 @@ public:
     uint64_t ueIdentity;
   };
 
+  struct RrcScInfoRequest
+  {
+    uint16_t cellId;
+  };
+
   struct RrcConnectionSetup
   {
     uint8_t rrcTransactionIdentifier;
@@ -692,6 +697,8 @@ public:
    * \param msg the message
    */
   virtual void SendRrcConnectionRequest (RrcConnectionRequest msg) = 0;
+
+  virtual void SendRrcScInfoRequest (RrcScInfoRequest msg) = 0;
 
   /**
    * \brief Send an _RRCConnectionSetupComplete_ message to the serving eNodeB
@@ -937,6 +944,9 @@ public:
   virtual void RecvRrcConnectionRequest (uint16_t rnti,
                                          RrcConnectionRequest msg) = 0;
 
+  virtual void RecvRrcScInfoRequest (uint16_t rnti,
+                                          RrcScInfoRequest msg) = 0;
+
   /**
    * \brief Receive an _RRCConnectionSetupComplete_ message from a UE
    *        during an RRC connection establishment procedure
@@ -1012,6 +1022,7 @@ public:
   // inherited from LteUeRrcSapUser
   virtual void Setup (SetupParameters params);
   virtual void SendRrcConnectionRequest (RrcConnectionRequest msg);
+  virtual void SendRrcScInfoRequest (RrcScInfoRequest msg);
   virtual void SendRrcConnectionSetupCompleted (RrcConnectionSetupCompleted msg);
   virtual void SendRrcConnectionReconfigurationCompleted (RrcConnectionReconfigurationCompleted msg);
   virtual void SendRrcConnectionReestablishmentRequest (RrcConnectionReestablishmentRequest msg);
@@ -1046,6 +1057,13 @@ void
 MemberLteUeRrcSapUser<C>::SendRrcConnectionRequest (RrcConnectionRequest msg)
 {
   m_owner->DoSendRrcConnectionRequest (msg);
+}
+
+template <class C>
+void
+MemberLteUeRrcSapUser<C>::SendRrcScInfoRequest (RrcScInfoRequest msg)
+{
+  m_owner->DoSendRrcScInfoRequest (msg);
 }
 
 template <class C>
@@ -1184,6 +1202,40 @@ MemberLteUeRrcSapProvider<C>::RecvRrcConnectionReject (RrcConnectionReject msg)
   Simulator::ScheduleNow (&C::DoRecvRrcConnectionReject, m_owner, msg);
 }
 
+template <class C>
+class SmallLteUeRrcSapProvider : public LteUeRrcSapProvider
+{
+public:
+  SmallLteUeRrcSapProvider (C* owner);
+
+  // methods inherited from LteUeRrcSapProvider go here
+  virtual void CompleteSetup (CompleteSetupParameters params) {};
+  virtual void RecvSystemInformation (SystemInformation msg);
+  virtual void RecvRrcConnectionSetup (RrcConnectionSetup msg) {};
+  virtual void RecvRrcTestMsg (RrcTestMsg msg) {};
+  virtual void RecvRrcConnectionReconfiguration (RrcConnectionReconfiguration msg) {};
+  virtual void RecvRrcConnectionReestablishment (RrcConnectionReestablishment msg) {};
+  virtual void RecvRrcConnectionReestablishmentReject (RrcConnectionReestablishmentReject msg) {};
+  virtual void RecvRrcConnectionRelease (RrcConnectionRelease msg) {};
+  virtual void RecvRrcConnectionReject (RrcConnectionReject msg) {};
+
+private:
+  SmallLteUeRrcSapProvider ();
+  C* m_owner;
+};
+
+template <class C>
+SmallLteUeRrcSapProvider<C>::SmallLteUeRrcSapProvider (C* owner)
+{
+  m_owner = owner;
+}
+
+template <class C>
+void
+SmallLteUeRrcSapProvider<C>::RecvSystemInformation (SystemInformation msg)
+{
+  Simulator::ScheduleNow (&C::DoRecvSmallSystemInformation, m_owner, msg);
+}
 
 /**
  * Template for the implementation of the LteEnbRrcSapUser as a member
@@ -1343,6 +1395,7 @@ public:
 
   virtual void CompleteSetupUe (uint16_t rnti, CompleteSetupUeParameters params);
   virtual void RecvRrcConnectionRequest (uint16_t rnti, RrcConnectionRequest msg);
+  virtual void RecvRrcScInfoRequest (uint16_t rnti, RrcScInfoRequest msg);
   virtual void RecvRrcConnectionSetupCompleted (uint16_t rnti, RrcConnectionSetupCompleted msg);
   virtual void RecvRrcConnectionReconfigurationCompleted (uint16_t rnti, RrcConnectionReconfigurationCompleted msg);
   virtual void RecvRrcConnectionReestablishmentRequest (uint16_t rnti, RrcConnectionReestablishmentRequest msg);
@@ -1377,6 +1430,13 @@ void
 MemberLteEnbRrcSapProvider<C>::RecvRrcConnectionRequest (uint16_t rnti, RrcConnectionRequest msg)
 {
   Simulator::ScheduleNow (&C::DoRecvRrcConnectionRequest, m_owner, rnti, msg);
+}
+
+template <class C>
+void
+MemberLteEnbRrcSapProvider<C>::RecvRrcScInfoRequest (uint16_t rnti, RrcScInfoRequest msg)
+{
+  Simulator::ScheduleNow (&C::DoRecvRrcScInfoRequest, m_owner, rnti, msg);
 }
 
 template <class C>

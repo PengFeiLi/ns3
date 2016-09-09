@@ -65,9 +65,13 @@ public:
 
   Ptr<LteUeMac> GetMac (void) const;
 
+  Ptr<LteUeMac> GetSmallMac (void) const;
+
   Ptr<LteUeRrc> GetRrc () const;
 
   Ptr<LteUePhy> GetPhy (void) const;
+
+  Ptr<LteUePhy> GetSmallPhy (void) const;
 
   Ptr<EpcUeNas> GetNas (void) const;
 
@@ -144,6 +148,10 @@ private:
 
   Ptr<LteUeMac> m_mac;
   Ptr<LteUePhy> m_phy;
+
+  Ptr<LteUeMac> m_smallMac;
+  Ptr<LteUePhy> m_smallPhy;
+
   Ptr<LteUeRrc> m_rrc;
   Ptr<EpcUeNas> m_nas;
 

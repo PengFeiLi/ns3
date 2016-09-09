@@ -244,6 +244,7 @@ public:
   void CompleteSetupUe (LteEnbRrcSapProvider::CompleteSetupUeParameters params);
   /// Part of the RRC protocol. Implement the LteEnbRrcSapProvider::RecvRrcConnectionRequest interface.
   void RecvRrcConnectionRequest (LteRrcSap::RrcConnectionRequest msg);
+  void RecvRrcScInfoRequest (LteRrcSap::RrcScInfoRequest msg);
   /// Part of the RRC protocol. Implement the LteEnbRrcSapProvider::RecvRrcConnectionSetupCompleted interface.
   void RecvRrcConnectionSetupCompleted (LteRrcSap::RrcConnectionSetupCompleted msg);
   /// Part of the RRC protocol. Implement the LteEnbRrcSapProvider::RecvRrcConnectionReconfigurationCompleted interface.
@@ -875,6 +876,7 @@ private:
   void DoCompleteSetupUe (uint16_t rnti, LteEnbRrcSapProvider::CompleteSetupUeParameters params);
   /// Part of the RRC protocol. Forwarding LteEnbRrcSapProvider::RecvRrcConnectionRequest interface to UeManager::RecvRrcConnectionRequest
   void DoRecvRrcConnectionRequest (uint16_t rnti, LteRrcSap::RrcConnectionRequest msg);
+  void DoRecvRrcScInfoRequest (uint16_t rnti, LteRrcSap::RrcScInfoRequest msg);
   /// Part of the RRC protocol. Forwarding LteEnbRrcSapProvider::RecvRrcConnectionSetupCompleted interface to UeManager::RecvRrcConnectionSetupCompleted
   void DoRecvRrcConnectionSetupCompleted (uint16_t rnti, LteRrcSap::RrcConnectionSetupCompleted msg);
   /// Part of the RRC protocol. Forwarding LteEnbRrcSapProvider::RecvRrcConnectionReconfigurationCompleted interface to UeManager::RecvRrcConnectionReconfigurationCompleted

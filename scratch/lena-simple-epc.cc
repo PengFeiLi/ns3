@@ -47,7 +47,7 @@ main (int argc, char *argv[])
 
   uint16_t numberOfClusters = 2;
   uint16_t nodesPerCluster = 2;
-  uint16_t numberOfUeNodes = 2;
+  uint16_t numberOfUeNodes = 1;
   double simTime = 1.1;
   double distance = 60.0;
   double interPacketInterval = 100;
