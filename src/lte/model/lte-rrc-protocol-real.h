@@ -78,11 +78,13 @@ private:
   void DoSendRrcConnectionReestablishmentRequest (LteRrcSap::RrcConnectionReestablishmentRequest msg);
   void DoSendRrcConnectionReestablishmentComplete (LteRrcSap::RrcConnectionReestablishmentComplete msg);
   void DoSendMeasurementReport (LteRrcSap::MeasurementReport msg);
+  void DoSendRrcSmallConnectionRequest (LteRrcSap::RrcSmallConnectionRequest msg);
 
   void SetEnbRrcSapProvider ();
   void DoReceivePdcpPdu (Ptr<Packet> p);
   void DoReceivePdcpPdu2 (Ptr<Packet> p);
   void DoReceivePdcpSdu (LtePdcpSapUser::ReceivePdcpSduParameters params);
+  void DoReceivePdcpSdu2 (LtePdcpSapUser::ReceivePdcpSduParameters params);
 
   bool m_isMacroCell;
 
@@ -135,6 +137,7 @@ private:
   void DoSendSystemInformation (LteRrcSap::SystemInformation msg);
   void SendSystemInformation (LteRrcSap::SystemInformation msg);
   void DoSendRrcConnectionSetup (uint16_t rnti, LteRrcSap::RrcConnectionSetup msg);
+  void DoSendRrcSmallConnectionSetup (uint16_t rnti, LteRrcSap::RrcConnectionSetup msg);
   void DoSendRrcTestMsg (uint16_t rnti, LteRrcSap::RrcTestMsg msg);
   void DoSendRrcConnectionReconfiguration (uint16_t rnti, LteRrcSap::RrcConnectionReconfiguration msg);
   void DoSendRrcConnectionReestablishment (uint16_t rnti, LteRrcSap::RrcConnectionReestablishment msg);
@@ -147,6 +150,7 @@ private:
   LteRrcSap::RrcConnectionReconfiguration DoDecodeHandoverCommand (Ptr<Packet> p);
 
   void DoReceivePdcpSdu (LtePdcpSapUser::ReceivePdcpSduParameters params);
+  void DoReceivePdcpSdu2 (LtePdcpSapUser::ReceivePdcpSduParameters params);
   void DoReceivePdcpPdu (uint16_t rnti, Ptr<Packet> p);
   void DoReceivePdcpPdu2 (uint16_t rnti, Ptr<Packet> p);
 

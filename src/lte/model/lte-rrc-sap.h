@@ -589,6 +589,11 @@ public:
     uint64_t ueIdentity;
   };
 
+  struct RrcSmallConnectionRequest
+  {
+    uint16_t cellId;
+  };
+
   struct RrcScInfoRequest
   {
     uint16_t cellId;
@@ -698,6 +703,8 @@ public:
    */
   virtual void SendRrcConnectionRequest (RrcConnectionRequest msg) = 0;
 
+  virtual void SendRrcSmallConnectionRequest (RrcSmallConnectionRequest msg) = 0;
+
   virtual void SendRrcScInfoRequest (RrcScInfoRequest msg) = 0;
 
   /**
@@ -775,6 +782,8 @@ public:
    * \param msg the message
    */
   virtual void RecvRrcConnectionSetup (RrcConnectionSetup msg) = 0;
+
+  virtual void RecvRrcSmallConnectionSetup (RrcConnectionSetup msg) = 0;
 
   /**
    * \brief Receive an RRCTestMsg message from the serving eNodeB
@@ -862,6 +871,8 @@ public:
    */
   virtual void SendRrcConnectionSetup (uint16_t rnti, RrcConnectionSetup msg) = 0;
 
+  virtual void SendRrcSmallConnectionSetup (uint16_t rnti, RrcConnectionSetup msg) = 0;
+
   virtual void SendRrcTestMsg (uint16_t rnti, RrcTestMsg msg) = 0;
 
   /**
@@ -944,6 +955,9 @@ public:
   virtual void RecvRrcConnectionRequest (uint16_t rnti,
                                          RrcConnectionRequest msg) = 0;
 
+  virtual void RecvRrcSmallConnectionRequest (uint16_t rnti,
+                                         RrcSmallConnectionRequest msg) = 0;
+
   virtual void RecvRrcScInfoRequest (uint16_t rnti,
                                           RrcScInfoRequest msg) = 0;
 
@@ -1022,6 +1036,7 @@ public:
   // inherited from LteUeRrcSapUser
   virtual void Setup (SetupParameters params);
   virtual void SendRrcConnectionRequest (RrcConnectionRequest msg);
+  virtual void SendRrcSmallConnectionRequest (RrcSmallConnectionRequest msg);
   virtual void SendRrcScInfoRequest (RrcScInfoRequest msg);
   virtual void SendRrcConnectionSetupCompleted (RrcConnectionSetupCompleted msg);
   virtual void SendRrcConnectionReconfigurationCompleted (RrcConnectionReconfigurationCompleted msg);
@@ -1057,6 +1072,13 @@ void
 MemberLteUeRrcSapUser<C>::SendRrcConnectionRequest (RrcConnectionRequest msg)
 {
   m_owner->DoSendRrcConnectionRequest (msg);
+}
+
+template <class C>
+void
+MemberLteUeRrcSapUser<C>::SendRrcSmallConnectionRequest (RrcSmallConnectionRequest msg)
+{
+  m_owner->DoSendRrcSmallConnectionRequest (msg);
 }
 
 template <class C>
@@ -1116,6 +1138,7 @@ public:
   virtual void CompleteSetup (CompleteSetupParameters params);
   virtual void RecvSystemInformation (SystemInformation msg);
   virtual void RecvRrcConnectionSetup (RrcConnectionSetup msg);
+  virtual void RecvRrcSmallConnectionSetup (RrcConnectionSetup msg);
   virtual void RecvRrcTestMsg (RrcTestMsg msg);
   virtual void RecvRrcConnectionReconfiguration (RrcConnectionReconfiguration msg);
   virtual void RecvRrcConnectionReestablishment (RrcConnectionReestablishment msg);
@@ -1158,6 +1181,13 @@ void
 MemberLteUeRrcSapProvider<C>::RecvRrcConnectionSetup (RrcConnectionSetup msg)
 {
   Simulator::ScheduleNow (&C::DoRecvRrcConnectionSetup, m_owner, msg);
+}
+
+template <class C>
+void
+MemberLteUeRrcSapProvider<C>::RecvRrcSmallConnectionSetup (RrcConnectionSetup msg)
+{
+  Simulator::ScheduleNow (&C::DoRecvRrcSmallConnectionSetup, m_owner, msg);
 }
 
 template <class C>
@@ -1212,6 +1242,7 @@ public:
   virtual void CompleteSetup (CompleteSetupParameters params) {};
   virtual void RecvSystemInformation (SystemInformation msg);
   virtual void RecvRrcConnectionSetup (RrcConnectionSetup msg) {};
+  virtual void RecvRrcSmallConnectionSetup (RrcConnectionSetup msg) {};
   virtual void RecvRrcTestMsg (RrcTestMsg msg) {};
   virtual void RecvRrcConnectionReconfiguration (RrcConnectionReconfiguration msg) {};
   virtual void RecvRrcConnectionReestablishment (RrcConnectionReestablishment msg) {};
@@ -1254,6 +1285,7 @@ public:
   virtual void RemoveUe (uint16_t rnti);
   virtual void SendSystemInformation (SystemInformation msg);
   virtual void SendRrcConnectionSetup (uint16_t rnti, RrcConnectionSetup msg);
+  virtual void SendRrcSmallConnectionSetup (uint16_t rnti, RrcConnectionSetup msg);
   virtual void SendRrcTestMsg (uint16_t rnti, RrcTestMsg msg);
   virtual void SendRrcConnectionReconfiguration (uint16_t rnti, RrcConnectionReconfiguration msg);
   virtual void SendRrcConnectionReestablishment (uint16_t rnti, RrcConnectionReestablishment msg);
@@ -1307,6 +1339,13 @@ void
 MemberLteEnbRrcSapUser<C>::SendRrcConnectionSetup (uint16_t rnti, RrcConnectionSetup msg)
 {
   m_owner->DoSendRrcConnectionSetup (rnti, msg);
+}
+
+template <class C>
+void
+MemberLteEnbRrcSapUser<C>::SendRrcSmallConnectionSetup (uint16_t rnti, RrcConnectionSetup msg)
+{
+  m_owner->DoSendRrcSmallConnectionSetup (rnti, msg);
 }
 
 template <class C>
@@ -1395,6 +1434,7 @@ public:
 
   virtual void CompleteSetupUe (uint16_t rnti, CompleteSetupUeParameters params);
   virtual void RecvRrcConnectionRequest (uint16_t rnti, RrcConnectionRequest msg);
+  virtual void RecvRrcSmallConnectionRequest (uint16_t rnti, RrcSmallConnectionRequest msg);
   virtual void RecvRrcScInfoRequest (uint16_t rnti, RrcScInfoRequest msg);
   virtual void RecvRrcConnectionSetupCompleted (uint16_t rnti, RrcConnectionSetupCompleted msg);
   virtual void RecvRrcConnectionReconfigurationCompleted (uint16_t rnti, RrcConnectionReconfigurationCompleted msg);
@@ -1430,6 +1470,13 @@ void
 MemberLteEnbRrcSapProvider<C>::RecvRrcConnectionRequest (uint16_t rnti, RrcConnectionRequest msg)
 {
   Simulator::ScheduleNow (&C::DoRecvRrcConnectionRequest, m_owner, rnti, msg);
+}
+
+template <class C>
+void
+MemberLteEnbRrcSapProvider<C>::RecvRrcSmallConnectionRequest (uint16_t rnti, RrcSmallConnectionRequest msg)
+{
+  Simulator::ScheduleNow (&C::DoRecvRrcSmallConnectionRequest, m_owner, rnti, msg);
 }
 
 template <class C>

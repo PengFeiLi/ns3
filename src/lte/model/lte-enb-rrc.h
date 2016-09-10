@@ -244,6 +244,7 @@ public:
   void CompleteSetupUe (LteEnbRrcSapProvider::CompleteSetupUeParameters params);
   /// Part of the RRC protocol. Implement the LteEnbRrcSapProvider::RecvRrcConnectionRequest interface.
   void RecvRrcConnectionRequest (LteRrcSap::RrcConnectionRequest msg);
+  void RecvRrcSmallConnectionRequest (LteRrcSap::RrcSmallConnectionRequest msg);
   void RecvRrcScInfoRequest (LteRrcSap::RrcScInfoRequest msg);
   /// Part of the RRC protocol. Implement the LteEnbRrcSapProvider::RecvRrcConnectionSetupCompleted interface.
   void RecvRrcConnectionSetupCompleted (LteRrcSap::RrcConnectionSetupCompleted msg);
@@ -465,6 +466,9 @@ private:
   uint16_t m_targetCellId;
   std::list<uint8_t> m_drbsToBeStarted;
   bool m_needPhyMacConfiguration;
+
+  bool m_isWaitingSmallCompleted;
+  uint8_t m_waitingSmallTransId;
 
   /**
    * Time limit before a _connection request timeout_ occurs. Set after a new
@@ -876,6 +880,7 @@ private:
   void DoCompleteSetupUe (uint16_t rnti, LteEnbRrcSapProvider::CompleteSetupUeParameters params);
   /// Part of the RRC protocol. Forwarding LteEnbRrcSapProvider::RecvRrcConnectionRequest interface to UeManager::RecvRrcConnectionRequest
   void DoRecvRrcConnectionRequest (uint16_t rnti, LteRrcSap::RrcConnectionRequest msg);
+  void DoRecvRrcSmallConnectionRequest (uint16_t rnti, LteRrcSap::RrcSmallConnectionRequest msg);
   void DoRecvRrcScInfoRequest (uint16_t rnti, LteRrcSap::RrcScInfoRequest msg);
   /// Part of the RRC protocol. Forwarding LteEnbRrcSapProvider::RecvRrcConnectionSetupCompleted interface to UeManager::RecvRrcConnectionSetupCompleted
   void DoRecvRrcConnectionSetupCompleted (uint16_t rnti, LteRrcSap::RrcConnectionSetupCompleted msg);

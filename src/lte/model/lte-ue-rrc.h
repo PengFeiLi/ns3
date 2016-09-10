@@ -328,6 +328,7 @@ private:
   void DoRecvSystemInformation (LteRrcSap::SystemInformation msg);
   /// Part of the RRC protocol. Implement the LteUeRrcSapProvider::RecvRrcConnectionSetup interface.
   void DoRecvRrcConnectionSetup (LteRrcSap::RrcConnectionSetup msg);
+  void DoRecvRrcSmallConnectionSetup (LteRrcSap::RrcConnectionSetup msg);
   /// Part of the RRC protocol. Implement the LteUeRrcSapProvider::RecvRrcTestMsg interface.
   void DoRecvRrcTestMsg (LteRrcSap::RrcTestMsg msg);
   /// Part of the RRC protocol. Implement the LteUeRrcSapProvider::RecvRrcConnectionReconfiguration interface.
@@ -985,6 +986,10 @@ private:
 
   EventId m_smallConnectionTimeout;
 
+  LteRrcSap::PdschConfigDedicated m_smallPdschConfigDedicated;
+  std::map <uint8_t, Ptr<LteDataRadioBearerInfo> > m_smallDrbMap;
+  std::map<uint8_t, uint8_t> m_smallBid2DrbidMap;
+
 
   bool isMacroCell (uint16_t cellId);
   bool isSmallCell (uint16_t cellId);
@@ -1003,6 +1008,7 @@ private:
 
   void SmallConnectionTimeout ();
 
+  void ApplySmallConnectionSetup (LteRrcSap::RadioResourceConfigDedicated rrcd);
 
   void DoReportSmallUeMeasurements (LteUeCphySapUser::UeMeasurementsParameters params);
   void DoRecvSmallMasterInformationBlock (uint16_t cellId,

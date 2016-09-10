@@ -449,8 +449,8 @@ LteUeRrc::DoSendData (Ptr<Packet> packet, uint8_t bid)
 
   if (drbid != 0)
     {
-  std::map<uint8_t, Ptr<LteDataRadioBearerInfo> >::iterator it =   m_drbMap.find (drbid);
-  NS_ASSERT_MSG (it != m_drbMap.end (), "could not find bearer with drbid == " << drbid);
+  std::map<uint8_t, Ptr<LteDataRadioBearerInfo> >::iterator it =   m_smallDrbMap.find (drbid);
+  NS_ASSERT_MSG (it != m_smallDrbMap.end (), "could not find bearer with drbid == " << drbid);
 
   LtePdcpSapProvider::TransmitPdcpSduParameters params;
   params.pdcpSdu = packet;
@@ -879,7 +879,6 @@ LteUeRrc::DoRecvRrcConnectionSetup (LteRrcSap::RrcConnectionSetup msg)
         LteRrcSap::RrcConnectionSetupCompleted msg2;
         msg2.rrcTransactionIdentifier = msg.rrcTransactionIdentifier;
         m_rrcSapUser->SendRrcConnectionSetupCompleted (msg2);
-        m_asSapUser->NotifyConnectionSuccessful ();
         m_connectionEstablishedTrace (m_imsi, m_cellId, m_rnti);
         SwitchToState (CONNECTED_NORMALLY);
         StartSmallCellSelection ();
@@ -2831,9 +2830,9 @@ LteUeRrc::DisposeOldSrb1 ()
 uint8_t 
 LteUeRrc::Bid2Drbid (uint8_t bid)
 {
-  std::map<uint8_t, uint8_t>::iterator it = m_bid2DrbidMap.find (bid);
+  std::map<uint8_t, uint8_t>::iterator it = m_smallBid2DrbidMap.find (bid);
   //NS_ASSERT_MSG (it != m_bid2DrbidMap.end (), "could not find BID " << bid);
-  if (it == m_bid2DrbidMap.end ())
+  if (it == m_smallBid2DrbidMap.end ())
     {
       return 0;
     }
@@ -3355,6 +3354,14 @@ LteUeRrc::StartSmallConnection ()
   m_smallCphySapProvider->SetRnti (m_rnti);
   DoSendRrcSmallConnectionRequest ();
   SmallSwitchToState (IDLE_CONNECTING);
+}
+
+void
+LteUeRrc::DoSendRrcSmallConnectionRequest ()
+{
+  LteRrcSap::RrcSmallConnectionRequest msg;
+  msg.cellId = m_smallCellId;
+  m_rrcSapUser->SendRrcSmallConnectionRequest (msg); 
 
   m_smallConnectionTimeout = Simulator::Schedule (
                                   m_t300,
@@ -3381,10 +3388,156 @@ LteUeRrc::SmallConnectionTimeout ()
   SmallSwitchToState (IDLE_WAIT_SIB2);
 }
 
+void 
+LteUeRrc::DoRecvRrcSmallConnectionSetup (LteRrcSap::RrcConnectionSetup msg)
+{
+  NS_LOG_FUNCTION (this << " RNTI " << m_rnti);
+  NS_ASSERT_MSG (m_state == CONNECTED_NORMALLY, "must synchronize to a macro cell first");
+
+  switch (m_smallState)
+    {
+    case IDLE_CONNECTING:
+      {
+        ApplyRadioResourceConfigDedicated (msg.radioResourceConfigDedicated);
+        m_smallConnectionTimeout.Cancel ();
+        LteRrcSap::RrcConnectionSetupCompleted msg2;
+        msg2.rrcTransactionIdentifier = msg.rrcTransactionIdentifier;
+        m_rrcSapUser->SendRrcConnectionSetupCompleted (msg2);
+        m_asSapUser->NotifyConnectionSuccessful ();
+        SmallSwitchToState (CONNECTED_NORMALLY);
+      }
+      break;
+
+    default:
+      NS_FATAL_ERROR ("method unexpected in state " << ToString (m_smallState));
+      break;
+    }
+}
+
 void
-LteUeRrc::DoSendRrcSmallConnectionRequest ()
+LteUeRrc::ApplySmallConnectionSetup (LteRrcSap::RadioResourceConfigDedicated rrcd)
 {
 
+  NS_LOG_FUNCTION (this);
+  const struct LteRrcSap::PhysicalConfigDedicated& pcd = rrcd.physicalConfigDedicated;
+
+  if (pcd.haveAntennaInfoDedicated)
+    {
+      m_smallCphySapProvider->SetTransmissionMode (pcd.antennaInfo.transmissionMode);
+    }
+  if (pcd.haveSoundingRsUlConfigDedicated)
+    {
+      m_smallCphySapProvider->SetSrsConfigurationIndex (pcd.soundingRsUlConfigDedicated.srsConfigIndex);
+    }
+
+  if (pcd.havePdschConfigDedicated)
+    {
+      // update PdschConfigDedicated (i.e. P_A value)
+      m_smallPdschConfigDedicated = pcd.pdschConfigDedicated;
+      double paDouble = LteRrcSap::ConvertPdschConfigDedicated2Double (m_smallPdschConfigDedicated);
+      m_smallCphySapProvider->SetPa (paDouble);
+    }
+
+  std::list<LteRrcSap::DrbToAddMod>::const_iterator dtamIt;
+  for (dtamIt = rrcd.drbToAddModList.begin ();
+       dtamIt != rrcd.drbToAddModList.end ();
+       ++dtamIt)
+    {
+      NS_LOG_INFO (this << " IMSI " << m_imsi << " adding/modifying DRBID " << (uint32_t) dtamIt->drbIdentity << " LC " << (uint32_t) dtamIt->logicalChannelIdentity);
+      NS_ASSERT_MSG (dtamIt->logicalChannelIdentity > 2, "LCID value " << dtamIt->logicalChannelIdentity << " is reserved for SRBs");
+
+      std::map<uint8_t, Ptr<LteDataRadioBearerInfo> >::iterator drbMapIt = m_smallDrbMap.find (dtamIt->drbIdentity);
+      if (drbMapIt == m_smallDrbMap.end ())
+        {
+          NS_LOG_INFO ("New Data Radio Bearer");
+        
+          TypeId rlcTypeId;
+          if (m_useRlcSm)
+            {
+              rlcTypeId = LteRlcSm::GetTypeId ();
+            }
+          else
+            {
+              switch (dtamIt->rlcConfig.choice)
+                {
+                case LteRrcSap::RlcConfig::AM: 
+                  rlcTypeId = LteRlcAm::GetTypeId ();
+                  break;
+          
+                case LteRrcSap::RlcConfig::UM_BI_DIRECTIONAL: 
+                  rlcTypeId = LteRlcUm::GetTypeId ();
+                  break;
+          
+                default:
+                  NS_FATAL_ERROR ("unsupported RLC configuration");
+                  break;                
+                }
+            }
+  
+          ObjectFactory rlcObjectFactory;
+          rlcObjectFactory.SetTypeId (rlcTypeId);
+          Ptr<LteRlc> rlc = rlcObjectFactory.Create ()->GetObject<LteRlc> ();
+          rlc->SetLteMacSapProvider (m_smallMacSapProvider);
+          rlc->SetRnti (m_rnti);
+          rlc->SetLcId (dtamIt->logicalChannelIdentity);
+
+          Ptr<LteDataRadioBearerInfo> drbInfo = CreateObject<LteDataRadioBearerInfo> ();
+          drbInfo->m_rlc = rlc;
+          drbInfo->m_epsBearerIdentity = dtamIt->epsBearerIdentity;
+          drbInfo->m_logicalChannelIdentity = dtamIt->logicalChannelIdentity;
+          drbInfo->m_drbIdentity = dtamIt->drbIdentity;
+ 
+          // we need PDCP only for real RLC, i.e., RLC/UM or RLC/AM
+          // if we are using RLC/SM we don't care of anything above RLC
+          if (rlcTypeId != LteRlcSm::GetTypeId ())
+            {
+              Ptr<LtePdcp> pdcp = CreateObject<LtePdcp> ();
+              pdcp->SetRnti (m_rnti);
+              pdcp->SetLcId (dtamIt->logicalChannelIdentity);
+              pdcp->SetLtePdcpSapUser (m_smallDrbPdcpSapUser);
+              pdcp->SetLteRlcSapProvider (rlc->GetLteRlcSapProvider ());
+              rlc->SetLteRlcSapUser (pdcp->GetLteRlcSapUser ());
+              drbInfo->m_pdcp = pdcp;
+            }
+
+          m_smallBid2DrbidMap[dtamIt->epsBearerIdentity] = dtamIt->drbIdentity;
+  
+          m_smallDrbMap.insert (std::pair<uint8_t, Ptr<LteDataRadioBearerInfo> > (dtamIt->drbIdentity, drbInfo));
+  
+
+          struct LteUeCmacSapProvider::LogicalChannelConfig lcConfig;
+          lcConfig.priority = dtamIt->logicalChannelConfig.priority;
+          lcConfig.prioritizedBitRateKbps = dtamIt->logicalChannelConfig.prioritizedBitRateKbps;
+          lcConfig.bucketSizeDurationMs = dtamIt->logicalChannelConfig.bucketSizeDurationMs;
+          lcConfig.logicalChannelGroup = dtamIt->logicalChannelConfig.logicalChannelGroup;      
+
+          m_smallCmacSapProvider->AddLc (dtamIt->logicalChannelIdentity,
+                                    lcConfig,
+                                    rlc->GetLteMacSapUser ());
+          rlc->Initialize ();
+        }
+      else
+        {
+          NS_LOG_INFO ("request to modify existing DRBID");
+          Ptr<LteDataRadioBearerInfo> drbInfo = drbMapIt->second;
+          /// \todo currently not implemented. Would need to modify drbInfo, and then propagate changes to the MAC
+        }
+    }
+  
+  std::list<uint8_t>::iterator dtdmIt;
+  for (dtdmIt = rrcd.drbToReleaseList.begin ();
+       dtdmIt != rrcd.drbToReleaseList.end ();
+       ++dtdmIt)
+    {
+      uint8_t drbid = *dtdmIt;
+      NS_LOG_INFO (this << " IMSI " << m_imsi << " releasing DRB " << (uint32_t) drbid << drbid);
+      std::map<uint8_t, Ptr<LteDataRadioBearerInfo> >::iterator it =   m_smallDrbMap.find (drbid);
+      NS_ASSERT_MSG (it != m_smallDrbMap.end (), "could not find bearer with given lcid");
+      m_smallDrbMap.erase (it);      
+      m_smallBid2DrbidMap.erase (drbid);
+      //Remove LCID
+      m_smallCmacSapProvider->RemoveLc (drbid + 2);
+    }
 }
 
 } // namespace ns3

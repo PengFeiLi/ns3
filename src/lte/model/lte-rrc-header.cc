@@ -6251,6 +6251,116 @@ RrcUlDcchMessage::SerializeUlDcchMessage (int messageType) const
   SerializeChoice (16,messageType,false);
 }
 
+///////////////////  RrcUlDcchMessageExt ///////////////////////////////
+RrcUlDcchMessageExt::RrcUlDcchMessageExt () : RrcUlDcchMessage ()
+{
+}
+
+RrcUlDcchMessageExt::~RrcUlDcchMessageExt ()
+{
+}
+
+uint32_t
+RrcUlDcchMessageExt::Deserialize (Buffer::Iterator bIterator)
+{
+  DeserializeUlDcchMessageExt (bIterator);
+  return 1;
+}
+
+void
+RrcUlDcchMessageExt::Print (std::ostream &os) const
+{
+  std::cout << "UL DCCH EXTENSION MSG TYPE: " << m_messageType << std::endl;
+}
+
+void
+RrcUlDcchMessageExt::PreSerialize () const
+{
+  SerializeUlDcchMessageExt (m_messageType);
+}
+
+Buffer::Iterator
+RrcUlDcchMessageExt::DeserializeUlDcchMessageExt (Buffer::Iterator bIterator)
+{
+  std::bitset<0> bitset0;
+  int n;
+
+  bIterator = DeserializeSequence (&bitset0, false, bIterator);
+  bIterator = DeserializeChoice (2, false, &n, bIterator);
+  
+  if ( n==0 ) {
+    m_messageType = -1;
+  } else if ( n== 1) {
+    bIterator = DeserializeSequence (&bitset0, false, bIterator);
+    bIterator  = DeserializeChoice (16, false, &m_messageType, bIterator);
+  }
+
+  return bIterator;
+}
+
+void
+RrcUlDcchMessageExt::SerializeUlDcchMessageExt (int messageType) const
+{
+  SerializeSequence (std::bitset<0> (), false);
+  SerializeChoice (2, 1, false);
+  SerializeSequence (std::bitset<0> (), false);
+  SerializeChoice (16, messageType, false);
+}
+
+///////////////////  RrcSmallConnectionRequestHeader  /////////////////////////
+RrcSmallConnectionRequestHeader::RrcSmallConnectionRequestHeader ()
+{
+}
+
+RrcSmallConnectionRequestHeader::~RrcSmallConnectionRequestHeader ()
+{
+}
+
+void
+RrcSmallConnectionRequestHeader::PreSerialize () const
+{
+  m_serializationResult = Buffer ();
+
+  SerializeUlDcchMessageExt (1);
+
+  SerializeInteger (m_cellId, 0, 0xFFFF);
+
+  FinalizeSerialization ();
+}
+
+uint32_t
+RrcSmallConnectionRequestHeader::Deserialize (Buffer::Iterator bIterator)
+{
+  int n;
+
+  bIterator = DeserializeUlDcchMessageExt (bIterator);
+
+  bIterator = DeserializeInteger (&n, 0, 0xFFFF, bIterator);
+  m_cellId = n;
+
+  return GetSerializedSize ();
+}
+
+void
+RrcSmallConnectionRequestHeader::Print (std::ostream &os) const
+{
+  os << "cellId: " << (int) m_cellId << std::endl;
+}
+
+void
+RrcSmallConnectionRequestHeader::SetMessage (LteRrcSap::RrcSmallConnectionRequest msg)
+{
+  m_cellId = msg.cellId;
+}
+
+LteRrcSap::RrcSmallConnectionRequest
+RrcSmallConnectionRequestHeader::GetMessage () const
+{
+  LteRrcSap::RrcSmallConnectionRequest msg;
+  msg.cellId = m_cellId;
+  return msg;
+}
+
 ///////////////////  RrcDlDcchMessage //////////////////////////////////
 RrcDlDcchMessage::RrcDlDcchMessage () : RrcAsn1Header ()
 {
@@ -6310,6 +6420,200 @@ RrcDlDcchMessage::SerializeDlDcchMessage (int messageType) const
   SerializeChoice (2,0,false);
   // Choose message type
   SerializeChoice (16,messageType,false);
+}
+
+///////////////////  RrcDlDcchMessageExt  //////////////////////////////
+RrcDlDcchMessageExt::RrcDlDcchMessageExt ()
+{
+}
+
+RrcDlDcchMessageExt::~RrcDlDcchMessageExt ()
+{
+}
+
+uint32_t
+RrcDlDcchMessageExt::Deserialize (Buffer::Iterator bIterator)
+{
+  DeserializeDlDcchMessageExt (bIterator);
+  return 1;
+}
+
+void
+RrcDlDcchMessageExt::Print (std::ostream &os) const
+{
+  std::cout << "DL DCCH EXTENSION MSG TYPE: " << m_messageType << std::endl;
+}
+
+void
+RrcDlDcchMessageExt::PreSerialize () const
+{
+  SerializeDlDcchMessageExt (m_messageType);
+}
+
+Buffer::Iterator
+RrcDlDcchMessageExt::DeserializeDlDcchMessageExt (Buffer::Iterator bIterator)
+{
+  std::bitset<0> bitset0;
+  int n;
+
+  bIterator = DeserializeSequence (&bitset0,false,bIterator);
+  bIterator = DeserializeChoice (2,false,&n,bIterator);
+  if (n == 0)
+    {
+      m_messageType = -1;
+    }
+  else if (n == 1)
+    {
+      bIterator = DeserializeSequence (&bitset0, false, bIterator);
+      bIterator = DeserializeChoice (16,false,&m_messageType,bIterator);
+    }
+
+  return bIterator;
+}
+
+void
+RrcDlDcchMessageExt::SerializeDlDcchMessageExt (int messageType) const
+{
+  SerializeSequence (std::bitset<0> (),false);
+  SerializeChoice (2,1,false);
+  SerializeSequence (std::bitset<0> (), false);
+  SerializeChoice (16,messageType,false);
+}
+
+//////////////////// RrcSmallConnectionSetup class ////////////////////////
+RrcSmallConnectionSetupHeader::RrcSmallConnectionSetupHeader ()
+{
+}
+ 
+RrcSmallConnectionSetupHeader::~RrcSmallConnectionSetupHeader ()
+{
+}
+ 
+void
+RrcSmallConnectionSetupHeader::Print (std::ostream &os) const
+{
+  os << "rrcTransactionIdentifier: " << (int)m_rrcTransactionIdentifier << std::endl;
+  os << "radioResourceConfigDedicated:" << std::endl;
+  RrcAsn1Header::Print (os,m_radioResourceConfigDedicated);
+}
+
+void
+RrcSmallConnectionSetupHeader::PreSerialize () const
+{
+  m_serializationResult = Buffer ();
+
+  SerializeDlDcchMessageExt (1);
+
+  SerializeInteger (15,0,15);
+
+  // Serialize RRCConnectionSetup sequence:
+  // no default or optional fields. Extension marker not present.
+  SerializeSequence (std::bitset<0> (),false);
+
+  // Serialize rrc-TransactionIdentifier ::=INTEGER (0..3)
+  SerializeInteger (m_rrcTransactionIdentifier,0,3);
+
+  // Serialize criticalExtensions choice:
+  // 2 options, selected: 0 (option: c1)
+  SerializeChoice (2,0,false);
+
+  // Serialize c1 choice:
+  // 8 options, selected: 0 (option: rrcConnectionSetup-r8)
+  SerializeChoice (8,0,false);
+
+  // Serialize rrcConnectionSetup-r8 sequence
+  // 1 optional fields (not present). Extension marker not present.
+  SerializeSequence (std::bitset<1> (0),false);
+
+  // Serialize RadioResourceConfigDedicated sequence
+  SerializeRadioResourceConfigDedicated (m_radioResourceConfigDedicated);
+
+  // Serialize nonCriticalExtension sequence
+  // 2 optional fields, none present. No extension marker.
+  SerializeSequence (std::bitset<2> (0),false);
+
+  // Finish serialization
+  FinalizeSerialization ();
+}
+
+
+uint32_t
+RrcSmallConnectionSetupHeader::Deserialize (Buffer::Iterator bIterator)
+{
+  int n;
+
+  std::bitset<0> bitset0;
+  std::bitset<1> bitset1;
+  std::bitset<2> bitset2;
+
+  bIterator = DeserializeDlDcchMessageExt (bIterator);
+
+  bIterator = DeserializeInteger (&n,0,15,bIterator);
+
+  // Deserialize RRCConnectionSetup sequence
+  bIterator = DeserializeSequence (&bitset0,false,bIterator);
+
+  // Deserialize rrc-TransactionIdentifier ::=INTEGER (0..3)
+  bIterator = DeserializeInteger (&n,0,3,bIterator);
+  m_rrcTransactionIdentifier = n;
+
+  // Deserialize criticalExtensions choice
+  int criticalExtensionChoice;
+  bIterator = DeserializeChoice (2,false,&criticalExtensionChoice,bIterator);
+  if (criticalExtensionChoice == 1)
+    {
+      // Deserialize criticalExtensionsFuture
+      bIterator = DeserializeSequence (&bitset0,false,bIterator);
+    }
+  else if (criticalExtensionChoice == 0)
+    {
+      // Deserialize c1
+      int c1;
+      bIterator = DeserializeChoice (8,false,&c1,bIterator);
+
+      if (c1 > 0)
+        {
+          // Deserialize spareX , X:=7..1
+          bIterator = DeserializeNull (bIterator);
+        }
+      else if (c1 == 0)
+        {
+          // Deserialize rrcConnectionSetup-r8
+          // 1 optional fields, no extension marker.
+          bIterator = DeserializeSequence (&bitset1,false,bIterator);
+
+          // Deserialize radioResourceConfigDedicated
+          bIterator = DeserializeRadioResourceConfigDedicated (&m_radioResourceConfigDedicated,bIterator);
+
+          if (bitset1[0])
+            {
+              // Deserialize nonCriticalExtension
+              // 2 optional fields, no extension marker.
+              bIterator = DeserializeSequence (&bitset2,false,bIterator);
+
+              // Deserialization of lateR8NonCriticalExtension and nonCriticalExtension
+              // ...
+            }
+        }
+    }
+  return GetSerializedSize ();
+}
+
+void
+RrcSmallConnectionSetupHeader::SetMessage (LteRrcSap::RrcConnectionSetup msg)
+{
+  m_rrcTransactionIdentifier = msg.rrcTransactionIdentifier;
+  m_radioResourceConfigDedicated = msg.radioResourceConfigDedicated;
+  m_isDataSerialized = false;
+}
+
+LteRrcSap::RrcConnectionSetup
+RrcSmallConnectionSetupHeader::GetMessage () const
+{
+  LteRrcSap::RrcConnectionSetup msg;
+  msg.rrcTransactionIdentifier = m_rrcTransactionIdentifier;
+  msg.radioResourceConfigDedicated = m_radioResourceConfigDedicated; 
+  return msg;
 }
 
 ///////////////////  RrcUlCcchMessage //////////////////////////////////

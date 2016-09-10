@@ -250,6 +250,23 @@ LteUeRrcProtocolReal::DoSendRrcConnectionReestablishmentComplete (LteRrcSap::Rrc
   m_setupParameters.srb1SapProvider->TransmitPdcpSdu (transmitPdcpSduParameters);
 }
 
+void
+LteUeRrcProtocolReal::DoSendRrcSmallConnectionRequest (LteRrcSap::RrcSmallConnectionRequest msg)
+{
+  Ptr<Packet> packet = Create<Packet> ();
+
+  RrcSmallConnectionRequestHeader rrcSmallConnectionRequestHeader;
+  rrcSmallConnectionRequestHeader.SetMessage (msg);
+
+  packet->AddHeader (rrcSmallConnectionRequestHeader);
+
+  LtePdcpSapProvider::TransmitPdcpSduParameters transmitPdcpSduParameters;
+  transmitPdcpSduParameters.pdcpSdu = packet;
+  transmitPdcpSduParameters.rnti = m_rnti;
+  transmitPdcpSduParameters.lcid = 1;
+
+  m_setupParameters.srb1SapProvider->TransmitPdcpSdu (transmitPdcpSduParameters);
+}
 
 void 
 LteUeRrcProtocolReal::SetEnbRrcSapProvider ()
@@ -394,7 +411,28 @@ LteUeRrcProtocolReal::DoReceivePdcpSdu (LtePdcpSapUser::ReceivePdcpSduParameters
       rrcConnectionReleaseMsg = rrcConnectionReleaseHeader.GetMessage ();
       //m_ueRrcSapProvider->RecvRrcConnectionRelease (rrcConnectionReleaseMsg);
       break;
+    default:
+      DoReceivePdcpSdu2 (params);
+      break;
     }
+}
+
+void
+LteUeRrcProtocolReal::DoReceivePdcpSdu2 (LtePdcpSapUser::ReceivePdcpSduParameters params)
+{
+  RrcDlDcchMessageExt rrcDlDcchMessageExt;
+  params.pdcpSdu->PeekHeader (rrcDlDcchMessageExt);
+
+  switch (rrcDlDcchMessageExt.GetMessageType ())
+  {
+    case 1:
+      RrcSmallConnectionSetupHeader rrcSmallConnectionSetupHeader;
+      LteRrcSap::RrcConnectionSetup msg;
+      params.pdcpSdu->RemoveHeader (rrcSmallConnectionSetupHeader);
+      msg = rrcSmallConnectionSetupHeader.GetMessage ();
+      m_ueRrcSapProvider->RecvRrcSmallConnectionSetup (msg);
+      break;
+  }
 }
 
 NS_OBJECT_ENSURE_REGISTERED (LteEnbRrcProtocolReal);
@@ -616,6 +654,24 @@ LteEnbRrcProtocolReal::DoSendRrcConnectionSetup (uint16_t rnti, LteRrcSap::RrcCo
     }
 }
 
+void 
+LteEnbRrcProtocolReal::DoSendRrcSmallConnectionSetup (uint16_t rnti, LteRrcSap::RrcConnectionSetup msg)
+{
+  Ptr<Packet> packet = Create<Packet> ();
+
+  RrcSmallConnectionSetupHeader rrcSmallConnectionSetupHeader;
+  rrcSmallConnectionSetupHeader.SetMessage (msg);
+
+  packet->AddHeader (rrcSmallConnectionSetupHeader);
+
+  LtePdcpSapProvider::TransmitPdcpSduParameters transmitPdcpSduParameters;
+  transmitPdcpSduParameters.pdcpSdu = packet;
+  transmitPdcpSduParameters.rnti = rnti;
+  transmitPdcpSduParameters.lcid = 1;
+
+  m_setupUeParametersMap[rnti].srb1SapProvider->TransmitPdcpSdu (transmitPdcpSduParameters);
+}
+
 void
 LteEnbRrcProtocolReal::DoSendRrcTestMsg (uint16_t rnti, LteRrcSap::RrcTestMsg msg)
 {
@@ -819,6 +875,27 @@ LteEnbRrcProtocolReal::DoReceivePdcpSdu (LtePdcpSapUser::ReceivePdcpSduParameter
       params.pdcpSdu->RemoveHeader (rrcConnectionSetupCompleteHeader);
       rrcConnectionSetupCompletedMsg = rrcConnectionSetupCompleteHeader.GetMessage ();
       m_enbRrcSapProvider->RecvRrcConnectionSetupCompleted (params.rnti, rrcConnectionSetupCompletedMsg);
+      break;
+    default:
+      DoReceivePdcpSdu2 (params);
+      break;
+    }
+}
+
+void
+LteEnbRrcProtocolReal::DoReceivePdcpSdu2 (LtePdcpSapUser::ReceivePdcpSduParameters params)
+{
+  RrcUlDcchMessageExt rrcUlDcchMessageExt;
+  params.pdcpSdu->PeekHeader (rrcUlDcchMessageExt);
+
+  switch ( rrcUlDcchMessageExt.GetMessageType () )
+    {
+    case 1:
+      RrcSmallConnectionRequestHeader rrcSmallConnectionRequestHeader;
+      LteRrcSap::RrcSmallConnectionRequest msg;
+      params.pdcpSdu->RemoveHeader (rrcSmallConnectionRequestHeader);
+      msg = rrcSmallConnectionRequestHeader.GetMessage ();
+      m_enbRrcSapProvider->RecvRrcSmallConnectionRequest (params.rnti, msg);
       break;
     }
 }

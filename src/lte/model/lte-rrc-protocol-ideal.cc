@@ -178,6 +178,16 @@ LteUeRrcProtocolIdeal::DoSendMeasurementReport (LteRrcSap::MeasurementReport msg
                         msg);
 }
 
+void
+LteUeRrcProtocolIdeal::DoSendRrcSmallConnectionRequest (LteRrcSap::RrcSmallConnectionRequest msg)
+{
+  Simulator::Schedule (RRC_IDEAL_MSG_DELAY,
+                        &LteEnbRrcSapProvider::RecvRrcSmallConnectionRequest,
+                        m_enbRrcSapProvider,
+                        m_rnti,
+                        msg);
+}
+
 void 
 LteUeRrcProtocolIdeal::SetEnbRrcSapProvider ()
 {
@@ -388,6 +398,15 @@ LteEnbRrcProtocolIdeal::DoSendRrcConnectionSetup (uint16_t rnti, LteRrcSap::RrcC
 		       &LteUeRrcSapProvider::RecvRrcConnectionSetup,
 		       GetUeRrcSapProvider (rnti), 
 		       msg);
+}
+
+void
+LteEnbRrcProtocolIdeal::DoSendRrcSmallConnectionSetup (uint16_t rnti, LteRrcSap::RrcConnectionSetup msg)
+{
+  Simulator::Schedule (RRC_IDEAL_MSG_DELAY,
+          &LteUeRrcSapProvider::RecvRrcSmallConnectionSetup,
+          GetUeRrcSapProvider (rnti),
+          msg);
 }
 
 void

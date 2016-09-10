@@ -115,6 +115,39 @@ protected:
   Buffer::Iterator DeserializeUlDcchMessage (Buffer::Iterator bIterator);
 };
 
+class RrcUlDcchMessageExt : public RrcUlDcchMessage
+{
+public:
+  RrcUlDcchMessageExt ();
+  ~RrcUlDcchMessageExt ();
+
+  uint32_t Deserialize (Buffer::Iterator bIterator);
+  void Print (std::ostream &os) const;
+  void PreSerialize () const;
+
+protected:
+  void SerializeUlDcchMessageExt (int msgType) const;
+  Buffer::Iterator DeserializeUlDcchMessageExt (Buffer::Iterator bIterator);
+};
+
+class RrcSmallConnectionRequestHeader : public RrcUlDcchMessageExt
+{
+public:
+  RrcSmallConnectionRequestHeader ();
+  ~RrcSmallConnectionRequestHeader ();
+
+  uint32_t Deserialize (Buffer::Iterator bIterator);
+  void Print (std::ostream &os) const;
+  void PreSerialize () const;
+
+  void SetMessage (LteRrcSap::RrcSmallConnectionRequest msg);
+
+  LteRrcSap::RrcSmallConnectionRequest GetMessage () const;
+
+private:
+  uint16_t m_cellId;
+};
+
 /**
  * This class only serves to discriminate which message type has been received
  * in downlink (eNb to ue) for channel DCCH
@@ -133,6 +166,41 @@ public:
 protected:
   void SerializeDlDcchMessage (int msgType) const;
   Buffer::Iterator DeserializeDlDcchMessage (Buffer::Iterator bIterator);
+};
+
+class RrcDlDcchMessageExt : public RrcDlDcchMessage
+{
+public:
+  RrcDlDcchMessageExt ();
+  ~RrcDlDcchMessageExt ();
+
+  // Inherited from RrcAsn1Header
+  uint32_t Deserialize (Buffer::Iterator bIterator);
+  void Print (std::ostream &os) const;
+  void PreSerialize () const;
+
+protected:
+  void SerializeDlDcchMessageExt (int msgType) const;
+  Buffer::Iterator DeserializeDlDcchMessageExt (Buffer::Iterator bIterator);
+};
+
+class RrcSmallConnectionSetupHeader : public RrcDlDcchMessageExt
+{
+public:
+  RrcSmallConnectionSetupHeader ();
+  ~RrcSmallConnectionSetupHeader ();
+
+  // Inherited from RrcAsn1Header 
+  void PreSerialize () const;
+  uint32_t Deserialize (Buffer::Iterator bIterator);
+  void Print (std::ostream &os) const;
+
+  void SetMessage (LteRrcSap::RrcConnectionSetup msg);
+  LteRrcSap::RrcConnectionSetup GetMessage () const;
+
+private:
+  uint8_t m_rrcTransactionIdentifier;
+  mutable LteRrcSap::RadioResourceConfigDedicated m_radioResourceConfigDedicated;
 };
 
 /**

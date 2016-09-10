@@ -145,6 +145,8 @@ UeManager::UeManager (Ptr<LteEnbRrc> rrc, uint16_t rnti, State s)
     m_needPhyMacConfiguration (false)
 { 
   NS_LOG_FUNCTION (this);
+
+  m_isWaitingSmallCompleted = false;
 }
 
 void
@@ -850,6 +852,21 @@ UeManager::RecvRrcConnectionRequest (LteRrcSap::RrcConnectionRequest msg)
 }
 
 void
+UeManager::RecvRrcSmallConnectionRequest (LteRrcSap::RrcSmallConnectionRequest msg)
+{
+  NS_LOG_FUNCTION (this);
+  NS_LOG_INFO ("receive small connection request");
+
+  LteRrcSap::RrcConnectionSetup msg2;
+  msg2.rrcTransactionIdentifier = GetNewRrcTransactionIdentifier ();
+  msg2.radioResourceConfigDedicated = BuildRadioResourceConfigDedicated ();
+  m_rrc->m_rrcSapUser->SendRrcSmallConnectionSetup (m_rnti, msg2);
+
+  m_isWaitingSmallCompleted = true;
+  m_waitingSmallTransId = msg2.rrcTransactionIdentifier;
+}
+
+void
 UeManager::RecvRrcScInfoRequest (LteRrcSap::RrcScInfoRequest msg)
 {
   NS_LOG_FUNCTION (this);
@@ -868,12 +885,13 @@ UeManager::RecvRrcConnectionSetupCompleted (LteRrcSap::RrcConnectionSetupComplet
       SwitchToState (CONNECTED_NORMALLY);
       m_rrc->m_connectionEstablishedTrace (m_imsi, m_rrc->m_cellId, m_rnti);
 
-      LteRrcSap::RrcTestMsg tmsg;
-      tmsg.id = 10;
-      // Simulator::Schedule (MilliSeconds(100), &LteEnbRrcSapUser::SendRrcTestMsg, m_rrc->m_rrcSapUser, m_rnti, tmsg);
-      m_rrc->m_rrcSapUser->SendRrcTestMsg (m_rnti, tmsg);
       break;
-
+    case CONNECTED_NORMALLY:
+      if (m_isWaitingSmallCompleted && msg.rrcTransactionIdentifier == m_waitingSmallTransId)
+      {
+        NS_LOG_INFO ("small cell connection completed");
+        break;
+      }
     default:
       NS_FATAL_ERROR ("method unexpected in state " << ToString (m_state));
       break;
@@ -1896,6 +1914,13 @@ LteEnbRrc::DoRecvRrcConnectionRequest (uint16_t rnti, LteRrcSap::RrcConnectionRe
 {
   NS_LOG_FUNCTION (this << rnti);
   GetUeManager (rnti)->RecvRrcConnectionRequest (msg);
+}
+
+void
+LteEnbRrc::DoRecvRrcSmallConnectionRequest (uint16_t rnti, LteRrcSap::RrcSmallConnectionRequest msg)
+{
+  NS_LOG_FUNCTION (this << rnti);
+  GetUeManager (rnti)->RecvRrcSmallConnectionRequest (msg);
 }
 
 void
