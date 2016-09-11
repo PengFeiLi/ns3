@@ -216,6 +216,19 @@ public:
     TimeCriticalHandover
   };
 
+  struct ConnectionRequestParams
+  {
+    uint16_t            sourceCellId;
+    uint16_t            targetCellId;
+    uint16_t            rnti;
+    uint64_t            imsi;
+  };
+
+  struct RrConfigRequestParams
+  {
+    uint16_t            sourceCellId;
+    uint16_t            targetCellId;
+  };
 
   /**
    * \brief Parameters of the HANDOVER REQUEST message.
@@ -360,6 +373,8 @@ public:
 
   virtual void SendResourceStatusUpdate (ResourceStatusUpdateParams params) = 0;
 
+  virtual void SendConnectionRequest (ConnectionRequestParams params) = 0;
+
   virtual void SendUeData (UeDataParams params) = 0;
 };
 
@@ -390,6 +405,8 @@ public:
   virtual void RecvLoadInformation (LoadInformationParams params) = 0;
   
   virtual void RecvResourceStatusUpdate (ResourceStatusUpdateParams params) = 0;
+
+  virtual void RecvConnectionRequest (ConnectionRequestParams params) = 0;
 
   virtual void RecvUeData (UeDataParams params) = 0;
 };
@@ -489,6 +506,13 @@ EpcX2SpecificEpcX2SapProvider<C>::SendResourceStatusUpdate (ResourceStatusUpdate
 
 template <class C>
 void
+EpcX2SpecificEpcX2SapProvider<C>::SendConnectionRequest (ConnectionRequestParams params)
+{
+  m_x2->DoSendConnectionRequest (params);
+}
+
+template <class C>
+void
 EpcX2SpecificEpcX2SapProvider<C>::SendUeData (UeDataParams params)
 {
   m_x2->DoSendUeData (params);
@@ -519,6 +543,8 @@ public:
   virtual void RecvLoadInformation (LoadInformationParams params);
 
   virtual void RecvResourceStatusUpdate (ResourceStatusUpdateParams params);
+
+  virtual void RecvConnectionRequest (ConnectionRequestParams params);
 
   virtual void RecvUeData (UeDataParams params);
 
@@ -585,6 +611,13 @@ void
 EpcX2SpecificEpcX2SapUser<C>::RecvResourceStatusUpdate (ResourceStatusUpdateParams params)
 {
   m_rrc->DoRecvResourceStatusUpdate (params);
+}
+
+template <class C>
+void
+EpcX2SpecificEpcX2SapUser<C>::RecvConnectionRequest (ConnectionRequestParams params)
+{
+  m_rrc->DoRecvConnectionRequest (params);
 }
 
 template <class C>

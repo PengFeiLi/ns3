@@ -467,8 +467,6 @@ private:
   std::list<uint8_t> m_drbsToBeStarted;
   bool m_needPhyMacConfiguration;
 
-  bool m_isWaitingSmallCompleted;
-  uint8_t m_waitingSmallTransId;
 
   /**
    * Time limit before a _connection request timeout_ occurs. Set after a new
@@ -503,6 +501,11 @@ private:
    * UE CONTEXT RELEASE is received.
    */
   EventId m_handoverLeavingTimeout;
+
+private:
+  uint16_t m_smallCellId;
+  bool m_isWaitingSmallCompleted;
+  uint8_t m_waitingSmallTransId;
 
 }; // end of `class UeManager`
 
@@ -907,6 +910,7 @@ private:
   void DoRecvUeContextRelease (EpcX2SapUser::UeContextReleaseParams params);
   void DoRecvLoadInformation (EpcX2SapUser::LoadInformationParams params);
   void DoRecvResourceStatusUpdate (EpcX2SapUser::ResourceStatusUpdateParams params);
+  void DoRecvConnectionRequest (EpcX2SapUser::ConnectionRequest params);
   void DoRecvUeData (EpcX2SapUser::UeDataParams params);
 
   // CMAC SAP methods

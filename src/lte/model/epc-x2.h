@@ -134,6 +134,7 @@ protected:
   virtual void DoSendUeContextRelease (EpcX2SapProvider::UeContextReleaseParams params);
   virtual void DoSendLoadInformation (EpcX2SapProvider::LoadInformationParams params);
   virtual void DoSendResourceStatusUpdate (EpcX2SapProvider::ResourceStatusUpdateParams params);
+  virtual void DoSendConnectionRequest (EpcX2SapProvider::ConnectionRequestParams params);
   virtual void DoSendUeData (EpcX2SapProvider::UeDataParams params);
 
   EpcX2SapUser* m_x2SapUser;

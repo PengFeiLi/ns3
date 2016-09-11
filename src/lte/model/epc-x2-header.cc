@@ -1489,4 +1489,185 @@ EpcX2ResourceStatusUpdateHeader::GetNumberOfIes () const
   return m_numberOfIes;
 }
 
+//////////////////////////////////////////////////////////////////
+
+NS_OBJECT_ENSURE_REGISTERED (EpcX2ConnectionRequestHeader);
+
+EpcX2ConnectionRequestHeader::EpcX2ConnectionRequestHeader ()
+  : m_numberOfIes (1 + 1)，
+    m_headerLength (2 + 8)
+{
+}
+
+EpcX2ConnectionRequestHeader::~EpcX2ConnectionRequestHeader ()
+{
+  m_numberOfIes = 0;
+  m_headerLength = 0;
+}
+
+TypeId
+EpcX2ConnectionRequestHeader::GetTypeId (void)
+{
+  static TypeId tid = TypeId ("ns3::EpcX2ConnectionRequestHeader")
+    .SetParent<Header> ()
+    .SetGroupName ("Lte")
+    .AddConstructor<EpcX2ConnectionRequestHeader> ()
+  ;
+  return tid;
+}
+
+uint32_t
+EpcX2ConnectionRequestHeader::GetInstanceTypeId (void) const
+{
+  return GetTypeId ();
+}
+
+uint32_t
+EpcX2ConnectionRequestHeader::GetSerializedSize (void) const
+{
+  return m_headerLength;
+}
+
+void
+EpcX2ConnectionRequestHeader::Serialize (Buffer::Iterator start) const
+{
+  Buffer::Iterator i = start;
+
+  i.WriteHtonU16 (m_rnti);
+  i.WriteHtonU64 (m_imsi);
+}
+
+uint32_t
+EpcX2ConnectionRequestHeader::Deserialize (Buffer::Iterator start)
+{
+  Buffer::Iterator i = start;
+
+  m_rnti = i.ReadNtohU16 ();
+  m_imsi = i.ReadNtohU64 ();
+  m_numberOfIes = 2;
+  m_headerLength = 10;
+
+  return GetSerializedSize ();
+}
+
+void
+EpcX2ConnectionRequestHeader::Print (std::ostream &os) const
+{
+  os << "RNTI=" << m_rnti;
+  os << " IMSI=" << m_imsi;
+}
+
+uint16_t
+EpcX2ConnectionRequestHeader::GetRnti () const
+{
+  return m_rnti;
+}
+
+void
+EpcX2ConnectionRequestHeader::SetRnti (uint16_t rnti)
+{
+  m_rnti = rnti;
+}
+
+uint64_t
+EpcX2ConnectionRequestHeader::GetImsi () const
+{
+  return m_imsi;
+}
+
+void
+EpcX2ConnectionRequestHeader::SetImsi (uint64_t imsi)
+{
+  m_imsi = imsi;
+}
+
+uint32_t
+EpcX2ConnectionRequestHeader::GetLengthOfIes () const
+{
+  return m_headerLength;
+}
+
+uint32_t
+EpcX2ConnectionRequestHeader::GetNumberOfIes () const
+{
+  return m_numberOfIes;
+}
+
+//////////////////////////////////////////////////////////////////
+
+NS_OBJECT_ENSURE_REGISTERED (EpcX2RrConfigRequestHeader);
+
+EpcX2RrConfigRequestHeader::EpcX2RrConfigRequestHeader ()
+  : m_numberOfIes (1)，
+    m_headerLength (2)
+{
+}
+
+EpcX2RrConfigRequestHeader::~EpcX2RrConfigRequestHeader ()
+{
+  m_numberOfIes = 0;
+  m_headerLength = 0;
+}
+
+TypeId
+EpcX2RrConfigRequestHeader::GetTypeId (void)
+{
+  static TypeId tid = TypeId ("ns3::EpcX2RrConfigRequestHeader")
+    .SetParent<Header> ()
+    .SetGroupName ("Lte")
+    .AddConstructor<EpcX2RrConfigRequestHeader> ()
+  ;
+  return tid;
+}
+
+uint32_t
+EpcX2RrConfigRequestHeader::GetInstanceTypeId (void) const
+{
+  return GetTypeId ();
+}
+
+uint32_t
+EpcX2RrConfigRequestHeader::GetSerializedSize (void) const
+{
+  return m_headerLength;
+}
+
+void
+EpcX2RrConfigRequestHeader::Serialize (Buffer::Iterator start) const
+{
+  Buffer::Iterator i = start;
+
+  i.WriteHtonU16 (m_reqCellId);
+}
+
+uint32_t
+EpcX2RrConfigRequestHeader::Deserialize (Buffer::Iterator start)
+{
+  Buffer::Iterator i = start;
+
+  m_reqCellId = i.ReadNtohU16 ();
+  m_numberOfIes = 1;
+  m_headerLength = 2;
+
+  return GetSerializedSize ();
+}
+
+void
+EpcX2RrConfigRequestHeader::Print (std::ostream &os) const
+{
+  os << "Request cellId=" << m_reqCellId;
+}
+
+uint32_t
+EpcX2RrConfigRequestHeader::GetLengthOfIes () const
+{
+  return m_headerLength;
+}
+
+uint32_t
+EpcX2RrConfigRequestHeader::GetNumberOfIes () const
+{
+  return m_numberOfIes;
+}
+
 } // namespace ns3

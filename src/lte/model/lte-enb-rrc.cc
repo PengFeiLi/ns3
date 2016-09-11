@@ -857,13 +857,19 @@ UeManager::RecvRrcSmallConnectionRequest (LteRrcSap::RrcSmallConnectionRequest m
   NS_LOG_FUNCTION (this);
   NS_LOG_INFO ("receive small connection request");
 
-  LteRrcSap::RrcConnectionSetup msg2;
-  msg2.rrcTransactionIdentifier = GetNewRrcTransactionIdentifier ();
-  msg2.radioResourceConfigDedicated = BuildRadioResourceConfigDedicated ();
-  m_rrc->m_rrcSapUser->SendRrcSmallConnectionSetup (m_rnti, msg2);
+  // LteRrcSap::RrcConnectionSetup msg2;
+  // msg2.rrcTransactionIdentifier = GetNewRrcTransactionIdentifier ();
+  // msg2.radioResourceConfigDedicated = BuildRadioResourceConfigDedicated ();
+  // m_rrc->m_rrcSapUser->SendRrcSmallConnectionSetup (m_rnti, msg2);
 
-  m_isWaitingSmallCompleted = true;
-  m_waitingSmallTransId = msg2.rrcTransactionIdentifier;
+  // m_isWaitingSmallCompleted = true;
+  // m_waitingSmallTransId = msg2.rrcTransactionIdentifier;
+  EpcX2SapProvider::ConnectionRequestParams params;
+  params.sourceCellId = m_rrc->cellId;
+  params.targetCellId = m_rrc->msg.cellId;
+  params.rnti = m_rnti;
+  params.imsi = m_imsi;
+  m_rrc->m_x2SapProvider->SendConnectionRequest (params);
 }
 
 void
@@ -2157,6 +2163,16 @@ LteEnbRrc::DoRecvResourceStatusUpdate (EpcX2SapUser::ResourceStatusUpdateParams 
   NS_LOG_LOGIC ("Number of cellMeasurementResultItems = " << params.cellMeasurementResultList.size ());
 
   NS_ASSERT ("Processing of RESOURCE STATUS UPDATE X2 message IS NOT IMPLEMENTED");
+}
+
+void
+LteEnbRrc::DoRecvConnectionRequest (EpcX2SapUser::ConnectionRequestParams params)
+{
+  NS_LOG_FUNCTION (this);
+
+  NS_LOG_LOGIC ("Recv X2 message: CONNECTION REQUEST");
+
+  //TODO
 }
 
 void

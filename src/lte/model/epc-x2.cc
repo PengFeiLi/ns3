@@ -360,6 +360,32 @@ EpcX2::RecvFromX2cSocket (Ptr<Socket> socket)
           m_x2SapUser->RecvResourceStatusUpdate (params);
         }
     }
+  else if (procedureCode == EpcX2Header::ConnectionRequest)
+    {
+      if (messageType == EpcX2Header::InitiatingMessage)
+        {
+          NS_LOG_LOGIC ("Recv X2 message: CONNECTION REQUEST");
+
+          EpcX2ConnectionRequestHeader x2ConnectionRequestHeader;
+          packet->RemoveHeader (x2ConnectionRequestHeader);
+
+          NS_LOG_INFO ("X2 ConnectionRequest header: " << x2ConnectionRequestHeader);
+
+          EpcX2SapUser::ConnectionRequestParams params;
+          params.targetCellId = 0;
+          params.rnti = x2ConnectionRequestHeader.GetRnti ();
+          params.imsi = x2ConnectionRequestHeader.GetImsi ();
+
+          NS_LOG_LOGIC ("RNTI = " << params.rnti);
+          NS_LOG_LOGIC ("IMSI = " << params.imsi);
+
+          m_x2SapUser->RecvConnectionRequest (params);
+        }
+      else if (messageType == EpcX2Header::SuccessfulOutcome)
+        {
+
+        }
+    }
   else
     {
       NS_ASSERT_MSG (false, "ProcedureCode NOT SUPPORTED!!!");
@@ -730,6 +756,48 @@ EpcX2::DoSendResourceStatusUpdate (EpcX2SapProvider::ResourceStatusUpdateParams 
 
 }
 
+void
+EpcX2::DoSendConnectionRequest (EpcX2SapProvider::ConnectionRequestParams params)
+{
+  NS_LOG_FUNCTION (this);
+
+  NS_LOG_LOGIC ("sourceCellId = " << params.sourceCellId);
+  NS_LOG_LOGIC ("targetCellId = " << params.targetCellId);
+
+  NS_ASSERT_MSG (m_x2InterfaceSockets.find (params.targetCellId) != m_x2InterfaceSockets.end (),
+                 "Missing infos for targetCellId = " << params.targetCellId);
+  Ptr<X2IfaceInfo> socketInfo = m_x2InterfaceSockets [params.targetCellId];
+  Ptr<Socket> sourceSocket = socketInfo->m_localCtrlPlaneSocket;
+  Ipv4Address targetIpAddr = socketInfo->m_remoteIpAddr;
+
+  NS_LOG_LOGIC ("sourceSocket = " << sourceSocket);
+  NS_LOG_LOGIC ("targetIpAddr = " << targetIpAddr);
+
+  NS_LOG_INFO ("Send X2 message: CONNECTION REQUEST");
+
+  // Build the X2 message
+  EpcX2ConnectionRequestHeader x2ConnectionRequestHeader;
+  x2ConnectionRequestHeader.SetRnti (params.rnti);
+  x2ConnectionRequestHeader.SetImsi (params.imsi);
+
+  EpcX2Header x2Header;
+  x2Header.SetMessageType (EpcX2Header::InitiatingMessage);
+  x2Header.SetProcedureCode (EpcX2Header::ConnectionRequest);
+  x2Header.SetLengthOfIes (x2ConnectionRequestHeader.GetLengthOfIes ());
+  x2Header.SetNumberOfIes (x2ConnectionRequestHeader.GetNumberOfIes ());
+
+  NS_LOG_INFO ("X2 header: " << x2Header);
+  NS_LOG_INFO ("X2 ConnectionRequest header: " << x2ConnectionRequestHeader);
+
+  // Build the X2 packet
+  Ptr<Packet> packet = Create <Packet> ();
+  packet->AddHeader (x2ConnectionRequestHeader);
+  packet->AddHeader (x2Header);
+  NS_LOG_INFO ("packetLen = " << packet->GetSize ());
+
+  // Send the X2 message through the socket
+  sourceSocket->SendTo (packet, 0, InetSocketAddress (targetIpAddr, m_x2cUdpPort));
+}
 
 void
 EpcX2::DoSendUeData (EpcX2SapProvider::UeDataParams params)

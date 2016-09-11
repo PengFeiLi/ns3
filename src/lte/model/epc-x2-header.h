@@ -59,7 +59,9 @@ public:
     LoadIndication          = 2,
     SnStatusTransfer        = 4,
     UeContextRelease        = 5,
-    ResourceStatusReporting = 10
+    ResourceStatusReporting = 10,
+    RadioResourceConfig     = 11,
+    ConnectionRequest       = 12
   };
 
   enum TypeOfMessage_t {
@@ -336,6 +338,58 @@ private:
   std::vector <EpcX2Sap::CellMeasurementResultItem> m_cellMeasurementResultList;
 };
 
+class EpcX2ConnectionRequestHeader : pubic Header
+{
+public:
+  EpcX2ConnectionRequestHeader ();
+  virtual ~EpcX2ConnectionRequestHeader ();
+
+  static TypeId GetTypeId (void);
+  virtual TypeId GetInstanceTypeId (void) const;
+  virtual uint32_t GetSerializedSize (void) const;
+  virtual void Serialize (Buffer::Iterator start) const;
+  virtual uint32_t Deserialize (Buffer::Iterator start);
+  virtual void Print (std::ostream &os) const;
+
+  void SetRnti (uint16_t rnti);
+  uint16_t GetRnti () const;
+
+  void SetImsi (uint64_t rnti);
+  uint64_t GetImsi () const;
+
+  uint32_t GetLengthOfIes () const;
+  uint32_t GetNumberOfIes () const;
+
+private:
+  uint32_t          m_numberOfIes;
+  uint32_t          m_headerLength;
+
+  uint16_t          m_rnti;
+  uint64_t          m_imsi;
+};
+
+class EpcX2RrConfigRequestHeader : public Header
+{
+public:
+  EpcX2RrConfigRequestHeader ();
+  virtual ~EpcX2RrConfigRequestHeader ();
+
+  static TypeId GetTypeId (void);
+  virtual TypeId GetInstanceTypeId (void) const;
+  virtual uint32_t GetSerializedSize (void) const;
+  virtual void Serialize (Buffer::Iterator start) const;
+  virtual uint32_t Deserialize (Buffer::Iterator start);
+  virtual void Print (std::ostream &os) const;
+
+  uint32_t GetLengthOfIes () const;
+  uint32_t GetNumberOfIes () const;
+
+private:
+  uint32_t          m_numberOfIes;
+  uint32_t          m_headerLength;
+
+  uint16_t          m_reqCellId;
+};
 
 } // namespace ns3
 
