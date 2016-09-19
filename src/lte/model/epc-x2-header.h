@@ -24,6 +24,8 @@
 #include "ns3/epc-x2-sap.h"
 #include "ns3/header.h"
 
+#include <ns3/lte-rrc-sap.h>
+
 #include <vector>
 
 
@@ -60,8 +62,8 @@ public:
     SnStatusTransfer        = 4,
     UeContextRelease        = 5,
     ResourceStatusReporting = 10,
-    RadioResourceConfig     = 11,
-    ConnectionRequest       = 12
+    ConnectionRequest       = 12,
+    ConnectionCompleted     = 13
   };
 
   enum TypeOfMessage_t {
@@ -338,7 +340,7 @@ private:
   std::vector <EpcX2Sap::CellMeasurementResultItem> m_cellMeasurementResultList;
 };
 
-class EpcX2ConnectionRequestHeader : pubic Header
+class EpcX2ConnectionRequestHeader : public Header
 {
 public:
   EpcX2ConnectionRequestHeader ();
@@ -350,6 +352,9 @@ public:
   virtual void Serialize (Buffer::Iterator start) const;
   virtual uint32_t Deserialize (Buffer::Iterator start);
   virtual void Print (std::ostream &os) const;
+
+  void SetSrcCellId (uint16_t cellId);
+  uint16_t GetSrcCellId () const;
 
   void SetRnti (uint16_t rnti);
   uint16_t GetRnti () const;
@@ -364,15 +369,16 @@ private:
   uint32_t          m_numberOfIes;
   uint32_t          m_headerLength;
 
+  uint16_t          m_srcCellId;
   uint16_t          m_rnti;
   uint64_t          m_imsi;
 };
 
-class EpcX2RrConfigRequestHeader : public Header
+class EpcX2RrConfigHeader : public Header
 {
 public:
-  EpcX2RrConfigRequestHeader ();
-  virtual ~EpcX2RrConfigRequestHeader ();
+  EpcX2RrConfigHeader ();
+  ~EpcX2RrConfigHeader ();
 
   static TypeId GetTypeId (void);
   virtual TypeId GetInstanceTypeId (void) const;
@@ -381,6 +387,39 @@ public:
   virtual uint32_t Deserialize (Buffer::Iterator start);
   virtual void Print (std::ostream &os) const;
 
+  void SetRnti (uint16_t rnti);
+  uint16_t GetRnti () const;
+
+  void SetRrcd (LteRrcSap::RadioResourceConfigDedicated rrcd);
+  LteRrcSap::RadioResourceConfigDedicated GetRrcd () const;
+
+  uint32_t GetLengthOfIes () const;
+  uint32_t GetNumberOfIes () const;
+
+private:
+   uint32_t          m_numberOfIes;
+   uint32_t          m_headerLength;
+
+   uint16_t          m_rnti;
+   LteRrcSap::RadioResourceConfigDedicated m_rrcd;
+};
+
+class EpcX2SmallConnCompletedHeader : public Header
+{
+public:
+  EpcX2SmallConnCompletedHeader ();
+  virtual ~EpcX2SmallConnCompletedHeader ();
+
+  static TypeId GetTypeId (void);
+  virtual TypeId GetInstanceTypeId (void) const;
+  virtual uint32_t GetSerializedSize (void) const;
+  virtual void Serialize (Buffer::Iterator start) const;
+  virtual uint32_t Deserialize (Buffer::Iterator start);
+  virtual void Print (std::ostream &os) const;
+
+  void SetRnti (uint16_t rnti);
+  uint16_t GetRnti () const;
+
   uint32_t GetLengthOfIes () const;
   uint32_t GetNumberOfIes () const;
 
@@ -388,7 +427,7 @@ private:
   uint32_t          m_numberOfIes;
   uint32_t          m_headerLength;
 
-  uint16_t          m_reqCellId;
+  uint16_t          m_rnti;
 };
 
 } // namespace ns3

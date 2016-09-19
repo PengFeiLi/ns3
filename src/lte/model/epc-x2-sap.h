@@ -25,6 +25,8 @@
 #include "ns3/eps-bearer.h"
 #include "ns3/ipv4-address.h"
 
+#include <ns3/lte-rrc-sap.h>
+
 #include <bitset>
 
 namespace ns3 {
@@ -224,10 +226,19 @@ public:
     uint64_t            imsi;
   };
 
-  struct RrConfigRequestParams
+  struct SmallConnCompletedParams
   {
     uint16_t            sourceCellId;
     uint16_t            targetCellId;
+    uint16_t            rnti;
+  };
+
+  struct RrConfigParams
+  {
+    uint16_t            sourceCellId;
+    uint16_t            targetCellId;
+    uint16_t            rnti;
+    LteRrcSap::RadioResourceConfigDedicated rrcd;
   };
 
   /**
@@ -373,7 +384,11 @@ public:
 
   virtual void SendResourceStatusUpdate (ResourceStatusUpdateParams params) = 0;
 
+  virtual void SendSmallConnectionCompleted (SmallConnCompletedParams params) = 0;
+
   virtual void SendConnectionRequest (ConnectionRequestParams params) = 0;
+
+  virtual void SendRrConfig (RrConfigParams params) = 0;
 
   virtual void SendUeData (UeDataParams params) = 0;
 };
@@ -406,7 +421,11 @@ public:
   
   virtual void RecvResourceStatusUpdate (ResourceStatusUpdateParams params) = 0;
 
+  virtual void RecvSmallConnectionCompleted (SmallConnCompletedParams params) = 0;
+
   virtual void RecvConnectionRequest (ConnectionRequestParams params) = 0;
+
+  virtual void RecvRrcd (RrConfigParams params) = 0;
 
   virtual void RecvUeData (UeDataParams params) = 0;
 };
@@ -436,6 +455,12 @@ public:
   virtual void SendLoadInformation (LoadInformationParams params);
 
   virtual void SendResourceStatusUpdate (ResourceStatusUpdateParams params);
+
+  virtual void SendSmallConnectionCompleted (SmallConnCompletedParams params);
+
+  virtual void SendConnectionRequest (ConnectionRequestParams params);
+
+  virtual void SendRrConfig (RrConfigParams params);
 
   virtual void SendUeData (UeDataParams params);
 
@@ -506,9 +531,23 @@ EpcX2SpecificEpcX2SapProvider<C>::SendResourceStatusUpdate (ResourceStatusUpdate
 
 template <class C>
 void
+EpcX2SpecificEpcX2SapProvider<C>::SendSmallConnectionCompleted (SmallConnCompletedParams params)
+{
+  m_x2->DoSendSmallConnCompleted (params);
+}
+
+template <class C>
+void
 EpcX2SpecificEpcX2SapProvider<C>::SendConnectionRequest (ConnectionRequestParams params)
 {
   m_x2->DoSendConnectionRequest (params);
+}
+
+template <class C>
+void
+EpcX2SpecificEpcX2SapProvider<C>::SendRrConfig (RrConfigParams params)
+{
+  m_x2->DoSendRrConfig (params);
 }
 
 template <class C>
@@ -544,7 +583,11 @@ public:
 
   virtual void RecvResourceStatusUpdate (ResourceStatusUpdateParams params);
 
+  virtual void RecvSmallConnectionCompleted (SmallConnCompletedParams params);
+
   virtual void RecvConnectionRequest (ConnectionRequestParams params);
+
+  virtual void RecvRrcd (RrConfigParams params);
 
   virtual void RecvUeData (UeDataParams params);
 
@@ -615,9 +658,23 @@ EpcX2SpecificEpcX2SapUser<C>::RecvResourceStatusUpdate (ResourceStatusUpdatePara
 
 template <class C>
 void
+EpcX2SpecificEpcX2SapUser<C>::RecvSmallConnectionCompleted (SmallConnCompletedParams params)
+{
+  m_rrc->DoRecvSmallConnCompleted (params);
+}
+
+template <class C>
+void
 EpcX2SpecificEpcX2SapUser<C>::RecvConnectionRequest (ConnectionRequestParams params)
 {
-  m_rrc->DoRecvConnectionRequest (params);
+  m_rrc->DoRecvMacroConnectionRequest (params);
+}
+
+template <class C>
+void
+EpcX2SpecificEpcX2SapUser<C>::RecvRrcd (RrConfigParams params)
+{
+  m_rrc->DoRecvRrcd (params);
 }
 
 template <class C>

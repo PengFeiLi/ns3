@@ -474,7 +474,10 @@ public:
   */
   uint8_t GetRrcTransactionIdentifier () const;
 
+  uint8_t GetCellType () const;
+
 private:
+  uint8_t m_cellType;
   uint8_t m_rrcTransactionIdentifier;
 
 };

@@ -372,6 +372,7 @@ EpcX2::RecvFromX2cSocket (Ptr<Socket> socket)
           NS_LOG_INFO ("X2 ConnectionRequest header: " << x2ConnectionRequestHeader);
 
           EpcX2SapUser::ConnectionRequestParams params;
+          params.sourceCellId = x2ConnectionRequestHeader.GetSrcCellId ();
           params.targetCellId = 0;
           params.rnti = x2ConnectionRequestHeader.GetRnti ();
           params.imsi = x2ConnectionRequestHeader.GetImsi ();
@@ -383,7 +384,33 @@ EpcX2::RecvFromX2cSocket (Ptr<Socket> socket)
         }
       else if (messageType == EpcX2Header::SuccessfulOutcome)
         {
+          NS_LOG_LOGIC ("Recv X2 message: RadioResourceConfig from small");
 
+          EpcX2RrConfigHeader x2RrConfigHeader;
+          packet->RemoveHeader (x2RrConfigHeader);
+
+          NS_LOG_INFO ("X2 RrConfig header: " << x2RrConfigHeader);
+
+          EpcX2SapUser::RrConfigParams params;
+          params.rnti = x2RrConfigHeader.GetRnti ();
+          params.rrcd = x2RrConfigHeader.GetRrcd ();
+
+          m_x2SapUser->RecvRrcd (params);
+        }
+    }
+  else if (procedureCode == EpcX2Header::ConnectionCompleted)
+    {
+      if (messageType == EpcX2Header::InitiatingMessage)
+        {
+          NS_LOG_LOGIC ("Recv X2 message: SMALL CONNECTION COMPLETED");
+
+          EpcX2SmallConnCompletedHeader x2SmallConnCompletedHeader;
+          packet->RemoveHeader (x2SmallConnCompletedHeader);
+
+          EpcX2SapUser::SmallConnCompletedParams params;
+          params.rnti = x2SmallConnCompletedHeader.GetRnti ();
+
+          m_x2SapUser->RecvSmallConnectionCompleted (params);
         }
     }
   else
@@ -757,6 +784,48 @@ EpcX2::DoSendResourceStatusUpdate (EpcX2SapProvider::ResourceStatusUpdateParams 
 }
 
 void
+EpcX2::DoSendSmallConnCompleted (EpcX2SapProvider::SmallConnCompletedParams params)
+{
+  NS_LOG_FUNCTION (this);
+
+  NS_LOG_LOGIC ("sourceCellId = " << params.sourceCellId);
+  NS_LOG_LOGIC ("targetCellId = " << params.targetCellId);
+
+  NS_ASSERT_MSG (m_x2InterfaceSockets.find (params.targetCellId) != m_x2InterfaceSockets.end (),
+                 "Missing infos for targetCellId = " << params.targetCellId);
+  Ptr<X2IfaceInfo> socketInfo = m_x2InterfaceSockets [params.targetCellId];
+  Ptr<Socket> sourceSocket = socketInfo->m_localCtrlPlaneSocket;
+  Ipv4Address targetIpAddr = socketInfo->m_remoteIpAddr;
+
+  NS_LOG_LOGIC ("sourceSocket = " << sourceSocket);
+  NS_LOG_LOGIC ("targetIpAddr = " << targetIpAddr);
+
+  NS_LOG_INFO ("Send X2 message: Small cell connection completed");
+
+  // Build the X2 message
+  EpcX2SmallConnCompletedHeader smallConnCompletedHeader;
+  smallConnCompletedHeader.SetRnti (params.rnti);
+
+  EpcX2Header x2Header;
+  x2Header.SetMessageType (EpcX2Header::InitiatingMessage);
+  x2Header.SetProcedureCode (EpcX2Header::ConnectionCompleted);
+  x2Header.SetLengthOfIes (smallConnCompletedHeader.GetLengthOfIes ());
+  x2Header.SetNumberOfIes (smallConnCompletedHeader.GetNumberOfIes ());
+
+  NS_LOG_INFO ("X2 header: " << x2Header);
+  NS_LOG_INFO ("X2 SmallConnCompleted header: " << smallConnCompletedHeader);
+
+  // Build the X2 packet
+  Ptr<Packet> packet = Create <Packet> ();
+  packet->AddHeader (smallConnCompletedHeader);
+  packet->AddHeader (x2Header);
+  NS_LOG_INFO ("packetLen = " << packet->GetSize ());
+
+  // Send the X2 message through the socket
+  sourceSocket->SendTo (packet, 0, InetSocketAddress (targetIpAddr, m_x2cUdpPort));
+}
+
+void
 EpcX2::DoSendConnectionRequest (EpcX2SapProvider::ConnectionRequestParams params)
 {
   NS_LOG_FUNCTION (this);
@@ -777,6 +846,7 @@ EpcX2::DoSendConnectionRequest (EpcX2SapProvider::ConnectionRequestParams params
 
   // Build the X2 message
   EpcX2ConnectionRequestHeader x2ConnectionRequestHeader;
+  x2ConnectionRequestHeader.SetSrcCellId (params.sourceCellId);
   x2ConnectionRequestHeader.SetRnti (params.rnti);
   x2ConnectionRequestHeader.SetImsi (params.imsi);
 
@@ -792,6 +862,49 @@ EpcX2::DoSendConnectionRequest (EpcX2SapProvider::ConnectionRequestParams params
   // Build the X2 packet
   Ptr<Packet> packet = Create <Packet> ();
   packet->AddHeader (x2ConnectionRequestHeader);
+  packet->AddHeader (x2Header);
+  NS_LOG_INFO ("packetLen = " << packet->GetSize ());
+
+  // Send the X2 message through the socket
+  sourceSocket->SendTo (packet, 0, InetSocketAddress (targetIpAddr, m_x2cUdpPort));
+}
+
+void
+EpcX2::DoSendRrConfig (EpcX2SapProvider::RrConfigParams params)
+{
+  NS_LOG_FUNCTION (this);
+
+  NS_LOG_LOGIC ("sourceCellId = " << params.sourceCellId);
+  NS_LOG_LOGIC ("targetCellId = " << params.targetCellId);
+
+  NS_ASSERT_MSG (m_x2InterfaceSockets.find (params.targetCellId) != m_x2InterfaceSockets.end (),
+                 "Missing infos for targetCellId = " << params.targetCellId);
+  Ptr<X2IfaceInfo> socketInfo = m_x2InterfaceSockets [params.targetCellId];
+  Ptr<Socket> sourceSocket = socketInfo->m_localCtrlPlaneSocket;
+  Ipv4Address targetIpAddr = socketInfo->m_remoteIpAddr;
+
+  NS_LOG_LOGIC ("sourceSocket = " << sourceSocket);
+  NS_LOG_LOGIC ("targetIpAddr = " << targetIpAddr);
+
+  NS_LOG_INFO ("Send X2 message: RRCD");
+
+  // Build the X2 message
+  EpcX2RrConfigHeader x2RrConfigHeader;
+  x2RrConfigHeader.SetRnti (params.rnti);
+  x2RrConfigHeader.SetRrcd (params.rrcd);
+
+  EpcX2Header x2Header;
+  x2Header.SetMessageType (EpcX2Header::SuccessfulOutcome);
+  x2Header.SetProcedureCode (EpcX2Header::ConnectionRequest);
+  x2Header.SetLengthOfIes (x2RrConfigHeader.GetLengthOfIes ());
+  x2Header.SetNumberOfIes (x2RrConfigHeader.GetNumberOfIes ());
+
+  NS_LOG_INFO ("X2 header: " << x2Header);
+  NS_LOG_INFO ("X2 RrcConfig header: " << x2RrConfigHeader);
+
+  // Build the X2 packet
+  Ptr<Packet> packet = Create <Packet> ();
+  packet->AddHeader (x2RrConfigHeader);
   packet->AddHeader (x2Header);
   NS_LOG_INFO ("packetLen = " << packet->GetSize ());
 

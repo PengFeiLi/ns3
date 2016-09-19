@@ -4233,6 +4233,8 @@ RrcConnectionSetupCompleteHeader::PreSerialize () const
   // no default or optional fields. Extension marker not present.
   SerializeSequence (std::bitset<0> (),false);
 
+  SerializeInteger (m_cellType, 0, 1);
+
   // Serialize rrc-TransactionIdentifier
   SerializeInteger (m_rrcTransactionIdentifier,0,3);
 
@@ -4260,6 +4262,8 @@ RrcConnectionSetupCompleteHeader::Deserialize (Buffer::Iterator bIterator)
   bIterator = DeserializeSequence (&bitset0,false,bIterator);
 
   int n;
+  bIterator = DeserializeInteger (&n,0,1,bIterator);
+  m_cellType = n;
   bIterator = DeserializeInteger (&n,0,3,bIterator);
   m_rrcTransactionIdentifier = n;
 
@@ -4293,12 +4297,14 @@ RrcConnectionSetupCompleteHeader::Deserialize (Buffer::Iterator bIterator)
 void
 RrcConnectionSetupCompleteHeader::Print (std::ostream &os) const
 {
+  os << "cellType: " << (int) m_cellType <<std::endl;
   os << "rrcTransactionIdentifier: " << (int) m_rrcTransactionIdentifier << std::endl;
 }
 
 void
 RrcConnectionSetupCompleteHeader::SetMessage (LteRrcSap::RrcConnectionSetupCompleted msg)
 {
+  m_cellType = msg.cellType;
   m_rrcTransactionIdentifier = msg.rrcTransactionIdentifier;
   m_isDataSerialized = false;
 }
@@ -4309,10 +4315,17 @@ RrcConnectionSetupCompleteHeader::GetRrcTransactionIdentifier () const
   return m_rrcTransactionIdentifier;
 }
 
+uint8_t
+RrcConnectionSetupCompleteHeader::GetCellType () const
+{
+  return m_cellType;
+}
+
 LteRrcSap::RrcConnectionSetupCompleted
 RrcConnectionSetupCompleteHeader::GetMessage () const
 {
   LteRrcSap::RrcConnectionSetupCompleted msg;
+  msg.cellType = m_cellType;
   msg.rrcTransactionIdentifier = m_rrcTransactionIdentifier;
   return msg;
 }

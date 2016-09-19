@@ -82,6 +82,10 @@ public:
     HANDOVER_JOINING,
     HANDOVER_PATH_SWITCH,
     HANDOVER_LEAVING,
+    WAIT_UEREQ,
+    WAIT_SMALLSETUP,
+    WAIT_UESETUP,
+    CONNECTED_SMALL,
     NUM_STATES
   };
 
@@ -244,8 +248,6 @@ public:
   void CompleteSetupUe (LteEnbRrcSapProvider::CompleteSetupUeParameters params);
   /// Part of the RRC protocol. Implement the LteEnbRrcSapProvider::RecvRrcConnectionRequest interface.
   void RecvRrcConnectionRequest (LteRrcSap::RrcConnectionRequest msg);
-  void RecvRrcSmallConnectionRequest (LteRrcSap::RrcSmallConnectionRequest msg);
-  void RecvRrcScInfoRequest (LteRrcSap::RrcScInfoRequest msg);
   /// Part of the RRC protocol. Implement the LteEnbRrcSapProvider::RecvRrcConnectionSetupCompleted interface.
   void RecvRrcConnectionSetupCompleted (LteRrcSap::RrcConnectionSetupCompleted msg);
   /// Part of the RRC protocol. Implement the LteEnbRrcSapProvider::RecvRrcConnectionReconfigurationCompleted interface.
@@ -320,8 +322,6 @@ public:
      State oldState, State newState);
 
 private:
-
-  void SendTestMsgOverSrb0 ();
 
   /** 
    * Add a new LteDataRadioBearerInfo structure to the UeManager
@@ -502,10 +502,29 @@ private:
    */
   EventId m_handoverLeavingTimeout;
 
+/******************** only available on the macro cell side ***********************/
 private:
   uint16_t m_smallCellId;
-  bool m_isWaitingSmallCompleted;
-  uint8_t m_waitingSmallTransId;
+  State m_smallState;
+  uint8_t m_smallSetupTid;
+
+  void SmallSwitchToState (State newState);
+  void DoSmallConnectionSetupCompleted (LteRrcSap::RrcConnectionSetupCompleted msg);
+
+public:
+  void RecvRrcSmallConnectionRequest (LteRrcSap::RrcSmallConnectionRequest msg);
+  void RecvRrcScInfoRequest (LteRrcSap::RrcScInfoRequest msg);
+
+  void RecvSmallRrcd (LteRrcSap::RadioResourceConfigDedicated rrcd);
+
+/******************** only available on the small cell side ***********************/
+private:
+  uint16_t m_macroCellId;
+
+public:
+  void SmallInitialize (uint16_t cellId, uint64_t imsi);
+
+  void RecvX2ConnectionSetupCompleted ();
 
 }; // end of `class UeManager`
 
@@ -883,8 +902,6 @@ private:
   void DoCompleteSetupUe (uint16_t rnti, LteEnbRrcSapProvider::CompleteSetupUeParameters params);
   /// Part of the RRC protocol. Forwarding LteEnbRrcSapProvider::RecvRrcConnectionRequest interface to UeManager::RecvRrcConnectionRequest
   void DoRecvRrcConnectionRequest (uint16_t rnti, LteRrcSap::RrcConnectionRequest msg);
-  void DoRecvRrcSmallConnectionRequest (uint16_t rnti, LteRrcSap::RrcSmallConnectionRequest msg);
-  void DoRecvRrcScInfoRequest (uint16_t rnti, LteRrcSap::RrcScInfoRequest msg);
   /// Part of the RRC protocol. Forwarding LteEnbRrcSapProvider::RecvRrcConnectionSetupCompleted interface to UeManager::RecvRrcConnectionSetupCompleted
   void DoRecvRrcConnectionSetupCompleted (uint16_t rnti, LteRrcSap::RrcConnectionSetupCompleted msg);
   /// Part of the RRC protocol. Forwarding LteEnbRrcSapProvider::RecvRrcConnectionReconfigurationCompleted interface to UeManager::RecvRrcConnectionReconfigurationCompleted
@@ -910,7 +927,7 @@ private:
   void DoRecvUeContextRelease (EpcX2SapUser::UeContextReleaseParams params);
   void DoRecvLoadInformation (EpcX2SapUser::LoadInformationParams params);
   void DoRecvResourceStatusUpdate (EpcX2SapUser::ResourceStatusUpdateParams params);
-  void DoRecvConnectionRequest (EpcX2SapUser::ConnectionRequest params);
+  void DoRecvConnectionRequest (EpcX2SapUser::ConnectionRequestParams params);
   void DoRecvUeData (EpcX2SapUser::UeDataParams params);
 
   // CMAC SAP methods
@@ -1262,6 +1279,21 @@ private:
    * received. Exporting IMSI, cell ID, and RNTI.
    */
   TracedCallback<uint64_t, uint16_t, uint16_t, LteRrcSap::MeasurementReport> m_recvMeasurementReportTrace;
+
+private:
+  bool isMacroCell (uint16_t cellId) { return !(cellId & 0x003F); }
+
+/************ only available on the macro cell side ************/
+private:
+  void DoRecvRrcSmallConnectionRequest (uint16_t rnti, LteRrcSap::RrcSmallConnectionRequest msg);
+  void DoRecvRrcScInfoRequest (uint16_t rnti, LteRrcSap::RrcScInfoRequest msg);
+
+  void DoRecvRrcd (EpcX2SapUser::RrConfigParams params);
+
+/**************** only availabe on the small cell side *****************/
+private:
+  void DoRecvMacroConnectionRequest (EpcX2SapUser::ConnectionRequestParams params);
+  void DoRecvSmallConnCompleted (EpcX2SapUser::SmallConnCompletedParams params);
 
 }; // end of `class LteEnbRrc`
 

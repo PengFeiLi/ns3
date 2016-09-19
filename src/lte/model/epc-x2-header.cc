@@ -1494,8 +1494,8 @@ EpcX2ResourceStatusUpdateHeader::GetNumberOfIes () const
 NS_OBJECT_ENSURE_REGISTERED (EpcX2ConnectionRequestHeader);
 
 EpcX2ConnectionRequestHeader::EpcX2ConnectionRequestHeader ()
-  : m_numberOfIes (1 + 1)，
-    m_headerLength (2 + 8)
+  : m_numberOfIes (1 + 1 + 1),
+    m_headerLength (2 + 2 + 8)
 {
 }
 
@@ -1516,7 +1516,7 @@ EpcX2ConnectionRequestHeader::GetTypeId (void)
   return tid;
 }
 
-uint32_t
+TypeId
 EpcX2ConnectionRequestHeader::GetInstanceTypeId (void) const
 {
   return GetTypeId ();
@@ -1533,6 +1533,7 @@ EpcX2ConnectionRequestHeader::Serialize (Buffer::Iterator start) const
 {
   Buffer::Iterator i = start;
 
+  i.WriteHtonU16 (m_srcCellId);
   i.WriteHtonU16 (m_rnti);
   i.WriteHtonU64 (m_imsi);
 }
@@ -1542,10 +1543,11 @@ EpcX2ConnectionRequestHeader::Deserialize (Buffer::Iterator start)
 {
   Buffer::Iterator i = start;
 
+  m_srcCellId = i.ReadNtohU16 ();
   m_rnti = i.ReadNtohU16 ();
   m_imsi = i.ReadNtohU64 ();
-  m_numberOfIes = 2;
-  m_headerLength = 10;
+  m_numberOfIes = 3;
+  m_headerLength = 12;
 
   return GetSerializedSize ();
 }
@@ -1555,6 +1557,18 @@ EpcX2ConnectionRequestHeader::Print (std::ostream &os) const
 {
   os << "RNTI=" << m_rnti;
   os << " IMSI=" << m_imsi;
+}
+
+void
+EpcX2ConnectionRequestHeader::SetSrcCellId (uint16_t cellId)
+{
+  m_srcCellId = cellId;
+}
+
+uint16_t
+EpcX2ConnectionRequestHeader::GetSrcCellId () const
+{
+  return m_srcCellId;
 }
 
 uint16_t
@@ -1595,57 +1609,305 @@ EpcX2ConnectionRequestHeader::GetNumberOfIes () const
 
 //////////////////////////////////////////////////////////////////
 
-NS_OBJECT_ENSURE_REGISTERED (EpcX2RrConfigRequestHeader);
+NS_OBJECT_ENSURE_REGISTERED (EpcX2RrConfigHeader);
 
-EpcX2RrConfigRequestHeader::EpcX2RrConfigRequestHeader ()
-  : m_numberOfIes (1)，
-    m_headerLength (2)
+EpcX2RrConfigHeader::EpcX2RrConfigHeader ()
+  : m_numberOfIes (1 + 1),
+    m_headerLength (2 + 1 + (1 + 10) + 1 + 10)
 {
+  // m_headerLength = 0;
+  // m_headerLength += 2;
+  // m_headerLength += (1 + sz * 7);
+  // m_headerLength += (1 + sz * 10);
+  // m_headerLength += (1 + sz * 1);
+  // m_headerLength += 10;
+
 }
 
-EpcX2RrConfigRequestHeader::~EpcX2RrConfigRequestHeader ()
+EpcX2RrConfigHeader::~EpcX2RrConfigHeader ()
 {
   m_numberOfIes = 0;
   m_headerLength = 0;
 }
 
 TypeId
-EpcX2RrConfigRequestHeader::GetTypeId (void)
+EpcX2RrConfigHeader::GetTypeId (void)
 {
-  static TypeId tid = TypeId ("ns3::EpcX2RrConfigRequestHeader")
+  static TypeId tid = TypeId ("ns3::EpcX2RrConfigHeader")
     .SetParent<Header> ()
     .SetGroupName ("Lte")
-    .AddConstructor<EpcX2RrConfigRequestHeader> ()
+    .AddConstructor<EpcX2RrConfigHeader> ()
   ;
   return tid;
 }
 
-uint32_t
-EpcX2RrConfigRequestHeader::GetInstanceTypeId (void) const
+TypeId
+EpcX2RrConfigHeader::GetInstanceTypeId (void) const
 {
   return GetTypeId ();
 }
 
 uint32_t
-EpcX2RrConfigRequestHeader::GetSerializedSize (void) const
+EpcX2RrConfigHeader::GetSerializedSize (void) const
 {
   return m_headerLength;
 }
 
 void
-EpcX2RrConfigRequestHeader::Serialize (Buffer::Iterator start) const
+EpcX2RrConfigHeader::Serialize (Buffer::Iterator start) const
 {
   Buffer::Iterator i = start;
 
-  i.WriteHtonU16 (m_reqCellId);
+  i.WriteHtonU16 (m_rnti);
+
+  uint8_t sz;
+
+  // serialize SrbToAddMod list
+  sz = m_rrcd.srbToAddModList.size ();
+  i.WriteU8 (sz);
+
+  std::list<LteRrcSap::SrbToAddMod>::const_iterator it1 = m_rrcd.srbToAddModList.begin ();
+  while (it1 != m_rrcd.srbToAddModList.end ())
+    {
+      i.WriteU8 (it1->srbIdentity);
+      i.WriteU8 (it1->logicalChannelConfig.priority);
+      i.WriteHtonU16 (it1->logicalChannelConfig.prioritizedBitRateKbps);
+      i.WriteHtonU16 (it1->logicalChannelConfig.bucketSizeDurationMs);
+      i.WriteU8 (it1->logicalChannelConfig.logicalChannelGroup);
+
+      ++it1;
+    }
+  
+  // serialize DrbToAddMod list
+
+  sz = m_rrcd.drbToAddModList.size();
+  i.WriteU8 (sz);
+
+  std::list<LteRrcSap::DrbToAddMod>::const_iterator it2 = m_rrcd.drbToAddModList.begin ();
+  while (it2 != m_rrcd.drbToAddModList.end ())
+  {
+    i.WriteU8 (it2->epsBearerIdentity);
+    i.WriteU8 (it2->drbIdentity);
+    i.WriteU8 ((uint8_t)it2->rlcConfig.choice);
+    i.WriteU8 (it2->logicalChannelIdentity);
+    i.WriteU8 (it2->logicalChannelConfig.priority);
+    i.WriteHtonU16 (it2->logicalChannelConfig.prioritizedBitRateKbps);
+    i.WriteHtonU16 (it2->logicalChannelConfig.bucketSizeDurationMs);
+    i.WriteU8 (it2->logicalChannelConfig.logicalChannelGroup);
+
+    ++it2;
+  }
+
+  //serialize DrbToRelease list
+  sz = m_rrcd.drbToReleaseList.size ();
+  i.WriteU8 (sz);
+
+  std::list<uint8_t>::const_iterator it3 = m_rrcd.drbToReleaseList.begin ();
+  while (it3 != m_rrcd.drbToReleaseList.end ())
+    {
+      i.WriteU8 (*it3);
+      ++it3;
+    }
+
+  //serialize PhysicalConfigDedicated
+  i.WriteU8 ((uint8_t)m_rrcd.havePhysicalConfigDedicated);
+  
+  i.WriteU8 ((uint8_t)m_rrcd.physicalConfigDedicated.haveSoundingRsUlConfigDedicated);
+  i.WriteU8 ((uint8_t)m_rrcd.physicalConfigDedicated.soundingRsUlConfigDedicated.type);
+  i.WriteU8 (m_rrcd.physicalConfigDedicated.soundingRsUlConfigDedicated.srsBandwidth);
+  i.WriteHtonU16 (m_rrcd.physicalConfigDedicated.soundingRsUlConfigDedicated.srsConfigIndex);
+
+  i.WriteU8 ((uint8_t)m_rrcd.physicalConfigDedicated.haveAntennaInfoDedicated);
+  i.WriteU8 (m_rrcd.physicalConfigDedicated.antennaInfo.transmissionMode);
+
+  i.WriteU8 ((uint8_t)m_rrcd.physicalConfigDedicated.havePdschConfigDedicated);
+  i.WriteU8 (m_rrcd.physicalConfigDedicated.pdschConfigDedicated.pa);
 }
 
 uint32_t
-EpcX2RrConfigRequestHeader::Deserialize (Buffer::Iterator start)
+EpcX2RrConfigHeader::Deserialize (Buffer::Iterator start)
 {
   Buffer::Iterator i = start;
 
-  m_reqCellId = i.ReadNtohU16 ();
+  m_rnti = i.ReadNtohU16 ();
+  m_headerLength += 2;
+  
+  uint8_t sz;
+
+  // deserialize SrbToAddMod list
+  sz = i.ReadU8 ();
+  while (sz--)
+    {
+      LteRrcSap::SrbToAddMod stam;
+      stam.srbIdentity = i.ReadU8 ();
+      stam.logicalChannelConfig.priority = i.ReadU8 ();
+      stam.logicalChannelConfig.prioritizedBitRateKbps = i.ReadNtohU16 ();
+      stam.logicalChannelConfig.bucketSizeDurationMs = i.ReadNtohU16 ();
+      stam.logicalChannelConfig.logicalChannelGroup = i.ReadU8 ();
+      m_rrcd.srbToAddModList.push_back (stam);
+    }
+
+    m_headerLength += (1 + sz * 7);
+
+  // deserialize DrbToAddMod list
+  sz = i.ReadU8 ();
+  while (sz--)
+    {
+      LteRrcSap::DrbToAddMod dtam;
+      dtam.epsBearerIdentity = i.ReadU8 ();
+      dtam.drbIdentity = i.ReadU8 ();
+      uint8_t choice = i.ReadU8 ();
+      switch (choice) {
+        case 0:
+          dtam.rlcConfig.choice = LteRrcSap::RlcConfig::AM;
+          break;
+        case 1:
+          dtam.rlcConfig.choice = LteRrcSap::RlcConfig::UM_BI_DIRECTIONAL;
+          break;
+        case 2:
+          dtam.rlcConfig.choice = LteRrcSap::RlcConfig::UM_UNI_DIRECTIONAL_UL;
+          break;
+        case 3:
+          dtam.rlcConfig.choice = LteRrcSap::RlcConfig::UM_UNI_DIRECTIONAL_DL;
+          break;
+      }
+      dtam.logicalChannelIdentity = i.ReadU8 ();
+      dtam.logicalChannelConfig.priority = i.ReadU8 ();
+      dtam.logicalChannelConfig.prioritizedBitRateKbps = i.ReadNtohU16 ();
+      dtam.logicalChannelConfig.bucketSizeDurationMs = i.ReadNtohU16 ();
+      dtam.logicalChannelConfig.logicalChannelGroup = i.ReadU8 ();
+      m_rrcd.drbToAddModList.push_back (dtam);
+    }
+
+    m_headerLength += (1 + sz * 10);
+
+  // deserialize DrbToRelease list
+  sz = i.ReadU8 ();
+  while (sz--)
+    {
+      m_rrcd.drbToReleaseList.push_back (i.ReadU8 ());
+    }
+
+  m_headerLength += (1 + sz * 1);
+
+  // deserialize PhysicalConfigDedicated
+  m_rrcd.havePhysicalConfigDedicated = (bool)i.ReadU8 ();
+
+  m_rrcd.physicalConfigDedicated.haveSoundingRsUlConfigDedicated = i.ReadU8 ();
+  uint8_t type = i.ReadU8 ();
+  if (type == 0)
+    m_rrcd.physicalConfigDedicated.soundingRsUlConfigDedicated.type = LteRrcSap::SoundingRsUlConfigDedicated::SETUP;
+  else
+    m_rrcd.physicalConfigDedicated.soundingRsUlConfigDedicated.type = LteRrcSap::SoundingRsUlConfigDedicated::RESET;
+  m_rrcd.physicalConfigDedicated.soundingRsUlConfigDedicated.srsBandwidth = i.ReadU8 ();
+  m_rrcd.physicalConfigDedicated.soundingRsUlConfigDedicated.srsConfigIndex = i.ReadNtohU16 ();
+
+  m_rrcd.physicalConfigDedicated.haveAntennaInfoDedicated = (bool) i.ReadU8 ();
+  m_rrcd.physicalConfigDedicated.antennaInfo.transmissionMode = i.ReadU8 ();
+
+  m_rrcd.physicalConfigDedicated.havePdschConfigDedicated = i.ReadU8 ();
+  m_rrcd.physicalConfigDedicated.pdschConfigDedicated.pa = i.ReadU8 ();
+
+  m_headerLength += 10;
+
+  return GetSerializedSize ();
+}
+
+void
+EpcX2RrConfigHeader::Print (std::ostream &os) const
+{
+  os << "RadioResourceConfig rnti=" << m_rnti;
+}
+
+void
+EpcX2RrConfigHeader::SetRnti (uint16_t rnti)
+{
+  m_rnti = rnti;
+}
+
+uint16_t
+EpcX2RrConfigHeader::GetRnti () const
+{
+  return m_rnti;
+}
+
+void
+EpcX2RrConfigHeader::SetRrcd (LteRrcSap::RadioResourceConfigDedicated rrcd)
+{
+  m_rrcd = rrcd;
+}
+
+LteRrcSap::RadioResourceConfigDedicated
+EpcX2RrConfigHeader::GetRrcd () const
+{
+  return m_rrcd;
+}
+
+uint32_t
+EpcX2RrConfigHeader::GetLengthOfIes () const
+{
+  return m_headerLength;
+}
+
+uint32_t
+EpcX2RrConfigHeader::GetNumberOfIes () const
+{
+  return m_numberOfIes;
+}
+
+//////////////////////////////////////////////////////////////////
+
+NS_OBJECT_ENSURE_REGISTERED (EpcX2SmallConnCompletedHeader);
+
+EpcX2SmallConnCompletedHeader::EpcX2SmallConnCompletedHeader ()
+  : m_numberOfIes (1),
+    m_headerLength (2)
+{
+}
+
+EpcX2SmallConnCompletedHeader::~EpcX2SmallConnCompletedHeader ()
+{
+  m_numberOfIes = 0;
+  m_headerLength = 0;
+}
+
+TypeId
+EpcX2SmallConnCompletedHeader::GetTypeId (void)
+{
+  static TypeId tid = TypeId ("ns3::EpcX2SmallConnCompletedHeader")
+    .SetParent<Header> ()
+    .SetGroupName ("Lte")
+    .AddConstructor<EpcX2SmallConnCompletedHeader> ()
+  ;
+  return tid;
+}
+
+TypeId
+EpcX2SmallConnCompletedHeader::GetInstanceTypeId (void) const
+{
+  return GetTypeId ();
+}
+
+uint32_t
+EpcX2SmallConnCompletedHeader::GetSerializedSize (void) const
+{
+  return m_headerLength;
+}
+
+void
+EpcX2SmallConnCompletedHeader::Serialize (Buffer::Iterator start) const
+{
+  Buffer::Iterator i = start;
+
+  i.WriteHtonU16 (m_rnti);
+}
+
+uint32_t
+EpcX2SmallConnCompletedHeader::Deserialize (Buffer::Iterator start)
+{
+  Buffer::Iterator i = start;
+
+  m_rnti = i.ReadNtohU16 ();
   m_numberOfIes = 1;
   m_headerLength = 2;
 
@@ -1653,19 +1915,31 @@ EpcX2RrConfigRequestHeader::Deserialize (Buffer::Iterator start)
 }
 
 void
-EpcX2RrConfigRequestHeader::Print (std::ostream &os) const
+EpcX2SmallConnCompletedHeader::Print (std::ostream &os) const
 {
-  os << "Request cellId=" << m_reqCellId;
+  os << "rnti=" << m_rnti;
+}
+
+void
+EpcX2SmallConnCompletedHeader::SetRnti (uint16_t rnti)
+{
+  m_rnti = rnti;
+}
+
+uint16_t
+EpcX2SmallConnCompletedHeader::GetRnti () const
+{
+  return m_rnti;
 }
 
 uint32_t
-EpcX2RrConfigRequestHeader::GetLengthOfIes () const
+EpcX2SmallConnCompletedHeader::GetLengthOfIes () const
 {
   return m_headerLength;
 }
 
 uint32_t
-EpcX2RrConfigRequestHeader::GetNumberOfIes () const
+EpcX2SmallConnCompletedHeader::GetNumberOfIes () const
 {
   return m_numberOfIes;
 }

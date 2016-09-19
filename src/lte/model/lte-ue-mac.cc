@@ -347,10 +347,10 @@ LteUeMac::SendReportBufferStatus (void)
       std::map <uint8_t, LcInfo>::iterator lcInfoMapIt;
       lcInfoMapIt = m_lcInfoMap.find (lcid);
       NS_ASSERT (lcInfoMapIt !=  m_lcInfoMap.end ());
-      // NS_ASSERT_MSG ((lcid != 0) || (((*it).second.txQueueSize == 0)
-      //                                && ((*it).second.retxQueueSize == 0)
-      //                                && ((*it).second.statusPduSize == 0)),
-      //                "BSR should not be used for LCID 0");
+      NS_ASSERT_MSG ((lcid != 0) || (((*it).second.txQueueSize == 0)
+                                     && ((*it).second.retxQueueSize == 0)
+                                     && ((*it).second.statusPduSize == 0)),
+                     "BSR should not be used for LCID 0");
       uint8_t lcg = lcInfoMapIt->second.lcConfig.logicalChannelGroup;
       queue.at (lcg) += ((*it).second.txQueueSize + (*it).second.retxQueueSize + (*it).second.statusPduSize);
     }
@@ -547,6 +547,7 @@ LteUeMac::DoReceivePhyPdu (Ptr<Packet> p)
 {
   LteRadioBearerTag tag;
   p->RemovePacketTag (tag);
+  NS_LOG_INFO ( "tag: " << tag.GetRnti () << " " << (int) tag.GetLcid());
   if (tag.GetRnti () == m_rnti)
     {
       // packet is for the current user

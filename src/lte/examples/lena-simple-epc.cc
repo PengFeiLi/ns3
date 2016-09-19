@@ -119,6 +119,8 @@ main (int argc, char *argv[])
   NetDeviceContainer enbLteDevs = lteHelper->InstallClusterEnbDevice (enbNodes, numberOfClusters, nodesPerCluster);
   NetDeviceContainer ueLteDevs = lteHelper->InstallUeDevice (ueNodes);
 
+  lteHelper->AddX2Interface (enbNodes);
+
   // Install the IP stack on the UEs
   internet.Install (ueNodes);
   Ipv4InterfaceContainer ueIpIface;
@@ -153,10 +155,10 @@ main (int argc, char *argv[])
       ++otherPort;
       PacketSinkHelper dlPacketSinkHelper ("ns3::UdpSocketFactory", InetSocketAddress (Ipv4Address::GetAny (), dlPort));
       PacketSinkHelper ulPacketSinkHelper ("ns3::UdpSocketFactory", InetSocketAddress (Ipv4Address::GetAny (), ulPort));
-      PacketSinkHelper packetSinkHelper ("ns3::UdpSocketFactory", InetSocketAddress (Ipv4Address::GetAny (), otherPort));
+      // PacketSinkHelper packetSinkHelper ("ns3::UdpSocketFactory", InetSocketAddress (Ipv4Address::GetAny (), otherPort));
       serverApps.Add (dlPacketSinkHelper.Install (ueNodes.Get(u)));
       serverApps.Add (ulPacketSinkHelper.Install (remoteHost));
-      serverApps.Add (packetSinkHelper.Install (ueNodes.Get(u)));
+      // serverApps.Add (packetSinkHelper.Install (ueNodes.Get(u)));
 
       UdpClientHelper dlClient (ueIpIface.GetAddress (u), dlPort);
       dlClient.SetAttribute ("Interval", TimeValue (MilliSeconds(interPacketInterval)));
@@ -166,20 +168,20 @@ main (int argc, char *argv[])
       ulClient.SetAttribute ("Interval", TimeValue (MilliSeconds(interPacketInterval)));
       ulClient.SetAttribute ("MaxPackets", UintegerValue(1000000));
 
-      UdpClientHelper client (ueIpIface.GetAddress (u), otherPort);
-      client.SetAttribute ("Interval", TimeValue (MilliSeconds(interPacketInterval)));
-      client.SetAttribute ("MaxPackets", UintegerValue(1000000));
+      // UdpClientHelper client (ueIpIface.GetAddress (u), otherPort);
+      // client.SetAttribute ("Interval", TimeValue (MilliSeconds(interPacketInterval)));
+      // client.SetAttribute ("MaxPackets", UintegerValue(1000000));
 
       clientApps.Add (dlClient.Install (remoteHost));
       clientApps.Add (ulClient.Install (ueNodes.Get(u)));
-      if (u+1 < ueNodes.GetN ())
-        {
-          clientApps.Add (client.Install (ueNodes.Get(u+1)));
-        }
-      else
-        {
-          clientApps.Add (client.Install (ueNodes.Get(0)));
-        }
+      // if (u+1 < ueNodes.GetN ())
+      //   {
+      //     clientApps.Add (client.Install (ueNodes.Get(u+1)));
+      //   }
+      // else
+      //   {
+      //     clientApps.Add (client.Install (ueNodes.Get(0)));
+      //   }
     }
   serverApps.Start (Seconds (0.01));
   clientApps.Start (Seconds (0.01));

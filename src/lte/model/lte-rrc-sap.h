@@ -25,6 +25,7 @@
 
 #include <stdint.h>
 #include <list>
+#include <iostream>
 
 #include <ns3/ptr.h>
 #include <ns3/simulator.h>
@@ -93,7 +94,7 @@ public:
   {
     enum
     {
-      AM,
+      AM = 0,
       UM_BI_DIRECTIONAL,
       UM_UNI_DIRECTIONAL_UL,
       UM_UNI_DIRECTIONAL_DL
@@ -108,11 +109,19 @@ public:
     uint8_t logicalChannelGroup;
   };
 
+  static void PrintLcc (LogicalChannelConfig lcc)
+  {
+    std::cout << (int) lcc.priority << " "
+              << (int) lcc.prioritizedBitRateKbps << " "
+              << (int) lcc.bucketSizeDurationMs << " "
+              << (int) lcc.logicalChannelGroup << std::endl;
+  }
+
   struct SoundingRsUlConfigCommon
   {
     enum
     {
-      SETUP, RESET
+      SETUP = 0, RESET
     } type;
     uint8_t srsBandwidthConfig;
     uint8_t srsSubframeConfig;
@@ -122,11 +131,18 @@ public:
   {
     enum
     {
-      SETUP, RESET
+      SETUP = 0, RESET
     } type;
     uint8_t srsBandwidth;
     uint16_t srsConfigIndex;
   };
+
+  static void PrintSrcd (SoundingRsUlConfigDedicated srcd)
+  {
+    std::cout << (int) srcd.type << " "
+              << (int) srcd.srsBandwidth << " "
+              << (int) srcd.srsConfigIndex << std::endl;
+  }
 
   struct AntennaInfoDedicated
   {
@@ -204,12 +220,29 @@ public:
     PdschConfigDedicated pdschConfigDedicated;
   };
 
+  static void PrintPcd (PhysicalConfigDedicated pcd)
+  {
+    std::cout << (int) pcd.haveSoundingRsUlConfigDedicated << std::endl;
+    PrintSrcd (pcd.soundingRsUlConfigDedicated);
+
+    std::cout << (int) pcd.haveAntennaInfoDedicated << std::endl;
+    std::cout << (int) pcd.antennaInfo.transmissionMode << std::endl;
+
+    std::cout << (int) pcd.havePdschConfigDedicated << std::endl;
+    std::cout << (int) pcd.pdschConfigDedicated.pa << std::endl;
+  }
 
   struct SrbToAddMod
   {
     uint8_t srbIdentity;
     LogicalChannelConfig logicalChannelConfig;
   };
+
+  static void PrintStam (SrbToAddMod stam)
+  {
+    std::cout << (int) stam.srbIdentity << std::endl;
+    PrintLcc (stam.logicalChannelConfig);
+  }
 
   struct DrbToAddMod
   {
@@ -219,6 +252,15 @@ public:
     uint8_t logicalChannelIdentity;
     LogicalChannelConfig logicalChannelConfig;
   };
+
+  static void PrintDtam (DrbToAddMod dtam)
+  {
+    std::cout << (int) dtam.epsBearerIdentity << " "
+              << (int) dtam.drbIdentity << " "
+              << (int) dtam.rlcConfig.choice << " "
+              << (int) dtam.logicalChannelIdentity << std::endl;
+    PrintLcc (dtam.logicalChannelConfig);
+  }
 
   struct PreambleInfo
   {
@@ -256,6 +298,36 @@ public:
     bool havePhysicalConfigDedicated;
     PhysicalConfigDedicated physicalConfigDedicated;
   };
+
+  static void PrintRrcd (RadioResourceConfigDedicated rrcd)
+  {
+    std::cout << "------------------- stam -----------------" << std::endl;
+    std::list<SrbToAddMod>::iterator sit = rrcd.srbToAddModList.begin ();
+    while (sit != rrcd.srbToAddModList.end ())
+    {
+      PrintStam (*sit);
+      ++sit;
+    }
+
+    std::cout << "------------------- dtam -----------------" << std::endl;
+    std::list<DrbToAddMod>::iterator dit = rrcd.drbToAddModList.begin ();
+    while (dit != rrcd.drbToAddModList.end ())
+    {
+      PrintDtam (*dit);
+      ++dit;
+    }
+
+    std::cout << "------------------- dtrl -----------------" << std::endl;
+    std::list<uint8_t>::iterator lit = rrcd.drbToReleaseList.begin ();
+    while (lit != rrcd.drbToReleaseList.end ())
+    {
+      std::cout << (int) *lit <<std::endl;
+      ++lit;
+    }
+
+    std::cout << "------------------- pcd ------------------" << std::endl;
+    PrintPcd (rrcd.physicalConfigDedicated);
+  }
 
   struct QuantityConfig
   {
@@ -613,6 +685,7 @@ public:
 
   struct RrcConnectionSetupCompleted
   {
+    uint8_t cellType;
     uint8_t rrcTransactionIdentifier;
   };
 

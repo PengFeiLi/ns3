@@ -111,6 +111,10 @@ static const std::string g_ueManagerStateName[UeManager::NUM_STATES] =
   "HANDOVER_JOINING",
   "HANDOVER_PATH_SWITCH",
   "HANDOVER_LEAVING",
+  "WAIT_UEREQ",
+  "WAIT_SMALLSETUP",
+  "WAIT_UESETUP",
+  "CONNECTED_SMALL"
 };
 
 /**
@@ -146,7 +150,7 @@ UeManager::UeManager (Ptr<LteEnbRrc> rrc, uint16_t rnti, State s)
 { 
   NS_LOG_FUNCTION (this);
 
-  m_isWaitingSmallCompleted = false;
+  m_smallState = WAIT_UEREQ;
 }
 
 void
@@ -263,6 +267,56 @@ UeManager::DoInitialize ()
       break;
     }
 
+}
+
+void
+UeManager::SmallInitialize (uint16_t cellId, uint64_t imsi)
+{
+  NS_LOG_FUNCTION (this);
+
+  m_macroCellId = cellId;
+  m_imsi = imsi;
+  m_drbPdcpSapUser = new LtePdcpSpecificLtePdcpSapUser<UeManager> (this);
+
+  m_physicalConfigDedicated.haveAntennaInfoDedicated = true;
+  m_physicalConfigDedicated.antennaInfo.transmissionMode = m_rrc->m_defaultTransmissionMode;
+  m_physicalConfigDedicated.haveSoundingRsUlConfigDedicated = true;
+  m_physicalConfigDedicated.soundingRsUlConfigDedicated.srsConfigIndex = m_rrc->GetNewSrsConfigurationIndex ();
+  m_physicalConfigDedicated.soundingRsUlConfigDedicated.type = LteRrcSap::SoundingRsUlConfigDedicated::SETUP;
+  m_physicalConfigDedicated.soundingRsUlConfigDedicated.srsBandwidth = 0;
+  m_physicalConfigDedicated.havePdschConfigDedicated = true;
+  m_physicalConfigDedicated.pdschConfigDedicated.pa = LteRrcSap::PdschConfigDedicated::dB0;
+
+  m_rrc->m_cmacSapProvider->AddUe (m_rnti);
+  m_rrc->m_cphySapProvider->AddUe (m_rnti);
+
+  // configure MAC (and scheduler)
+  LteEnbCmacSapProvider::UeConfig req;
+  req.m_rnti = m_rnti;
+  req.m_transmissionMode = m_physicalConfigDedicated.antennaInfo.transmissionMode;
+  m_rrc->m_cmacSapProvider->UeUpdateConfigurationReq (req);
+
+  // configure PHY
+  m_rrc->m_cphySapProvider->SetTransmissionMode (m_rnti, m_physicalConfigDedicated.antennaInfo.transmissionMode);
+  m_rrc->m_cphySapProvider->SetSrsConfigurationIndex (m_rnti, m_physicalConfigDedicated.soundingRsUlConfigDedicated.srsConfigIndex);
+
+  if (m_rrc->m_s1SapProvider != 0)
+    {
+       m_rrc->m_s1SapProvider->InitialUeMessage (m_imsi, m_rnti);
+    }
+
+  LteRrcSap::RadioResourceConfigDedicated rrcd;
+  rrcd = BuildRadioResourceConfigDedicated ();
+
+  RecordDataRadioBearersToBeStarted ();
+  SwitchToState (CONNECTION_SETUP);
+
+  EpcX2Sap::RrConfigParams params;
+  params.sourceCellId = m_rrc->m_cellId;
+  params.targetCellId = m_macroCellId;
+  params.rnti = m_rnti;
+  params.rrcd = rrcd;
+  m_rrc->m_x2SapProvider->SendRrConfig (params);
 }
 
 
@@ -505,7 +559,7 @@ UeManager::ScheduleRrcConnectionReconfiguration ()
     case HANDOVER_JOINING:
     case HANDOVER_LEAVING:
       // a previous reconfiguration still ongoing, we need to wait for it to be finished
-      m_pendingRrcConnectionReconfiguration = true;
+      // m_pendingRrcConnectionReconfiguration = true;
       break;
 
     case CONNECTED_NORMALLY:
@@ -672,10 +726,11 @@ UeManager::SendData (uint8_t bid, Ptr<Packet> p)
           {
             Ptr<LteDataRadioBearerInfo> bearerInfo = GetDataRadioBearerInfo (drbid);
             if (bearerInfo != NULL)
-              {
+              { 
+                NS_LOG_INFO ("transimit data");
                 LtePdcpSapProvider* pdcpSapProvider = bearerInfo->m_pdcp->GetLtePdcpSapProvider ();
-        pdcpSapProvider->TransmitPdcpSdu (params);
-      }
+                pdcpSapProvider->TransmitPdcpSdu (params);
+              }
           }
       }
       break;
@@ -811,10 +866,10 @@ UeManager::RecvRrcConnectionRequest (LteRrcSap::RrcConnectionRequest msg)
         if (m_rrc->m_admitRrcConnectionRequest == true)
           {
             m_imsi = msg.ueIdentity;
-            if (m_rrc->m_s1SapProvider != 0)
-              {
-                m_rrc->m_s1SapProvider->InitialUeMessage (m_imsi, m_rnti);
-              }
+            // if (m_rrc->m_s1SapProvider != 0)
+            //   {
+            //     m_rrc->m_s1SapProvider->InitialUeMessage (m_imsi, m_rnti);
+            //   }
 
             // send RRC CONNECTION SETUP to UE
             LteRrcSap::RrcConnectionSetup msg2;
@@ -857,19 +912,28 @@ UeManager::RecvRrcSmallConnectionRequest (LteRrcSap::RrcSmallConnectionRequest m
   NS_LOG_FUNCTION (this);
   NS_LOG_INFO ("receive small connection request");
 
-  // LteRrcSap::RrcConnectionSetup msg2;
-  // msg2.rrcTransactionIdentifier = GetNewRrcTransactionIdentifier ();
-  // msg2.radioResourceConfigDedicated = BuildRadioResourceConfigDedicated ();
-  // m_rrc->m_rrcSapUser->SendRrcSmallConnectionSetup (m_rnti, msg2);
+  m_smallCellId = msg.cellId;
 
-  // m_isWaitingSmallCompleted = true;
-  // m_waitingSmallTransId = msg2.rrcTransactionIdentifier;
-  EpcX2SapProvider::ConnectionRequestParams params;
-  params.sourceCellId = m_rrc->cellId;
-  params.targetCellId = m_rrc->msg.cellId;
+  EpcX2Sap::ConnectionRequestParams params;
+  params.sourceCellId = m_rrc->m_cellId;
+  params.targetCellId = msg.cellId;
   params.rnti = m_rnti;
   params.imsi = m_imsi;
   m_rrc->m_x2SapProvider->SendConnectionRequest (params);
+  SmallSwitchToState (WAIT_SMALLSETUP);
+}
+
+void
+UeManager::RecvSmallRrcd (LteRrcSap::RadioResourceConfigDedicated rrcd)
+{
+  NS_LOG_FUNCTION (this);
+  NS_LOG_INFO ("receive small cell rrcd");
+
+  LteRrcSap::RrcConnectionSetup msg;
+  msg.rrcTransactionIdentifier =  GetNewRrcTransactionIdentifier ();
+  msg.radioResourceConfigDedicated = rrcd;
+  m_rrc->m_rrcSapUser->SendRrcSmallConnectionSetup (m_rnti, msg);
+  SmallSwitchToState (WAIT_UESETUP);
 }
 
 void
@@ -883,25 +947,50 @@ void
 UeManager::RecvRrcConnectionSetupCompleted (LteRrcSap::RrcConnectionSetupCompleted msg)
 {
   NS_LOG_FUNCTION (this);
+
+  if (msg.cellType)
+    {
+      DoSmallConnectionSetupCompleted (msg);
+      return;
+    }
+
   switch (m_state)
     {
     case CONNECTION_SETUP:
       m_connectionSetupTimeout.Cancel ();
-      StartDataRadioBearers ();
+      // StartDataRadioBearers ();
       SwitchToState (CONNECTED_NORMALLY);
       m_rrc->m_connectionEstablishedTrace (m_imsi, m_rrc->m_cellId, m_rnti);
 
       break;
     case CONNECTED_NORMALLY:
-      if (m_isWaitingSmallCompleted && msg.rrcTransactionIdentifier == m_waitingSmallTransId)
-      {
-        NS_LOG_INFO ("small cell connection completed");
-        break;
-      }
     default:
       NS_FATAL_ERROR ("method unexpected in state " << ToString (m_state));
       break;
     }
+}
+
+void
+UeManager::RecvX2ConnectionSetupCompleted ()
+{
+  NS_LOG_FUNCTION (this);
+
+  StartDataRadioBearers ();
+  SwitchToState (CONNECTED_NORMALLY);
+}
+
+void
+UeManager::DoSmallConnectionSetupCompleted (LteRrcSap::RrcConnectionSetupCompleted msg)
+{
+  NS_LOG_FUNCTION (this);
+  NS_ASSERT_MSG (m_state == CONNECTED_NORMALLY, "must connect to the macro cell first, m_state=" + ToString (m_state));
+
+  EpcX2Sap::SmallConnCompletedParams params;
+  params.sourceCellId = m_rrc->m_cellId;
+  params.targetCellId = m_smallCellId;
+  params.rnti = m_rnti; 
+  m_rrc->m_x2SapProvider->SendSmallConnectionCompleted (params);
+  SmallSwitchToState (CONNECTED_SMALL);
 }
 
 void
@@ -1227,6 +1316,14 @@ UeManager::BuildRadioResourceConfigDedicated ()
 
   rrcd.havePhysicalConfigDedicated = true;
   rrcd.physicalConfigDedicated = m_physicalConfigDedicated;
+
+  // std::cout << "LteEnbRrc small rrcd " << std::endl;
+  // std::cout << rrcd.srbToAddModList.size () << std::endl;
+  // std::cout << rrcd.drbToAddModList.size () << std::endl;
+  // std::cout << rrcd.drbToReleaseList.size () << std::endl;
+  
+  // LteRrcSap::PrintRrcd (rrcd);
+
   return rrcd;
 }
 
@@ -1315,6 +1412,18 @@ UeManager::SwitchToState (State newState)
     default:
       break;
     }
+}
+
+void
+UeManager::SmallSwitchToState (State newState)
+{
+  NS_LOG_FUNCTION (this << ToString (newState));
+  // NS_ASSERT_MSG (m_state != CONNECTED_NORMALLY && m_smallState != WAIT_UEREQ, "must complete macro cell connection");
+  State oldState = m_smallState;
+  m_smallState = newState;
+
+  NS_LOG_INFO (this << " IMSI " << m_imsi << " RNTI " << m_rnti << " UeManager "
+                    << ToString (oldState) << " --> " << ToString (newState));
 }
 
 
@@ -1836,6 +1945,11 @@ LteEnbRrc::SendData (Ptr<Packet> packet)
 {
   NS_LOG_FUNCTION (this << packet);
 
+  if (isMacroCell (m_cellId))
+  {
+    NS_LOG_WARN ("macro cell can not send data");
+    return true;
+  }
   EpsBearerTag tag;
   bool found = packet->RemovePacketTag (tag);
   NS_ASSERT_MSG (found, "no EpsBearerTag found in packet to be sent");
@@ -2166,13 +2280,35 @@ LteEnbRrc::DoRecvResourceStatusUpdate (EpcX2SapUser::ResourceStatusUpdateParams 
 }
 
 void
-LteEnbRrc::DoRecvConnectionRequest (EpcX2SapUser::ConnectionRequestParams params)
+LteEnbRrc::DoRecvSmallConnCompleted (EpcX2SapUser::SmallConnCompletedParams params)
+{
+  NS_LOG_FUNCTION (this);
+
+  NS_LOG_LOGIC ("Recv X2 message: SMALL CONNECTION COMPLETED");
+
+  GetUeManager (params.rnti)->RecvX2ConnectionSetupCompleted ();
+}
+
+void
+LteEnbRrc::DoRecvMacroConnectionRequest (EpcX2SapUser::ConnectionRequestParams params)
 {
   NS_LOG_FUNCTION (this);
 
   NS_LOG_LOGIC ("Recv X2 message: CONNECTION REQUEST");
 
-  //TODO
+  Ptr<UeManager> ueManager = CreateObject<UeManager> (this, params.rnti, UeManager::INITIAL_RANDOM_ACCESS);
+  m_ueMap.insert (std::pair<uint16_t, Ptr<UeManager> > (params.rnti, ueManager));
+  ueManager->SmallInitialize (params.sourceCellId, params.imsi);
+  NS_LOG_DEBUG (this << " New UE RNTI " << params.rnti << " cellId " << m_cellId << " srs CI " << ueManager->GetSrsConfigurationIndex ());
+}
+
+void LteEnbRrc::DoRecvRrcd (EpcX2SapUser::RrConfigParams params)
+{
+  NS_LOG_FUNCTION (this);
+
+  NS_LOG_LOGIC ("Recv X2 message: RadioResourceConfigDedicated");
+
+  GetUeManager (params.rnti)->RecvSmallRrcd (params.rrcd);
 }
 
 void
