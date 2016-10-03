@@ -1376,6 +1376,9 @@ LteHelper::InstallClusterEnbDevice (NodeContainer c, uint16_t numberOfClusters, 
 Ptr<NetDevice>
 LteHelper::InstallMacroEnbDevice (Ptr<Node> n, uint16_t cluster)
 {
+  SetEnbDeviceAttribute ("DlEarfcn", UintegerValue (100));
+  SetEnbDeviceAttribute ("UlEarfcn", UintegerValue (100+18000));
+
   uint16_t cellId = GetMacroCellId (cluster);
 
   return InstallBaseEnbDevice (n, cellId);
@@ -1384,6 +1387,9 @@ LteHelper::InstallMacroEnbDevice (Ptr<Node> n, uint16_t cluster)
 Ptr<NetDevice>
 LteHelper::InstallSmallEnbDevice (Ptr<Node> n, uint16_t cluster, uint16_t inode)
 {
+  SetEnbDeviceAttribute ("DlEarfcn", UintegerValue (200));
+  SetEnbDeviceAttribute ("UlEarfcn", UintegerValue (200+18000));
+
   uint16_t cellId = GetSmallCellId (cluster, inode);
 
   return InstallBaseEnbDevice (n, cellId);

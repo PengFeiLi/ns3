@@ -612,7 +612,7 @@ LteUeRrc::DoStartCellSelection (uint16_t dlEarfcn)
   NS_ASSERT_MSG (m_state == IDLE_START,
                  "cannot start cell selection from state " << ToString (m_state));
   m_dlEarfcn = dlEarfcn;
-  m_smallDlEarfcn = dlEarfcn;
+  m_smallDlEarfcn = 200;
   m_cphySapProvider->StartCellSearch (dlEarfcn);
   SwitchToState (IDLE_CELL_SEARCH);
 }
