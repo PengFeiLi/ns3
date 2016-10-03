@@ -176,7 +176,8 @@ UdpClient::Send (void)
       NS_LOG_INFO ("TraceDelay TX " << m_size << " bytes to "
                                     << peerAddressStringStream.str () << " Uid: "
                                     << p->GetUid () << " Time: "
-                                    << (Simulator::Now ()).GetSeconds ());
+                                    << (Simulator::Now ()).GetSeconds ()
+                                    << " seqNumber " << seqTs.GetSeq ());
 
     }
   else

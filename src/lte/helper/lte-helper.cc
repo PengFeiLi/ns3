@@ -1386,6 +1386,9 @@ LteHelper::InstallSmallEnbDevice (Ptr<Node> n, uint16_t cluster, uint16_t inode)
 {
   uint16_t cellId = GetSmallCellId (cluster, inode);
 
+  SetEnbDeviceAttribute ("DlEarfcn", UintegerValue (200));
+  SetEnbDeviceAttribute ("UlEarfcn", UintegerValue (200 + 18000));
+
   return InstallBaseEnbDevice (n, cellId);
 }
 

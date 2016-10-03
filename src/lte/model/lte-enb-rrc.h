@@ -510,6 +510,7 @@ private:
 
   void SmallSwitchToState (State newState);
   void DoSmallConnectionSetupCompleted (LteRrcSap::RrcConnectionSetupCompleted msg);
+  void SendRrcTestMsg ();
 
 public:
   void RecvRrcSmallConnectionRequest (LteRrcSap::RrcSmallConnectionRequest msg);

@@ -1457,4 +1457,12 @@ LteUePhy::SwitchToState (State newState)
 }
 
 
+void
+LteUePhy::DoSetSpectrumPhyCellId (uint16_t cellId)
+{
+  m_downlinkSpectrumPhy->SetCellId (cellId);
+  m_uplinkSpectrumPhy->SetCellId (cellId);
+}
+
+
 } // namespace ns3

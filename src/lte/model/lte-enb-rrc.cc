@@ -991,6 +991,7 @@ UeManager::DoSmallConnectionSetupCompleted (LteRrcSap::RrcConnectionSetupComplet
   params.rnti = m_rnti; 
   m_rrc->m_x2SapProvider->SendSmallConnectionCompleted (params);
   SmallSwitchToState (CONNECTED_SMALL);
+  SendRrcTestMsg ();
 }
 
 void
@@ -1153,6 +1154,21 @@ UeManager::CmacUeConfigUpdateInd (LteEnbCmacSapUser::UeConfig cmacParams)
 
   // reconfigure the UE RRC
   ScheduleRrcConnectionReconfiguration ();
+}
+
+void
+UeManager::SendRrcTestMsg ()
+{
+  static uint32_t msgId = 0;
+
+  NS_LOG_INFO ("send test msg to " << m_rnti << " msgId: " << ++msgId);
+
+  LteRrcSap::RrcTestMsg msg;
+  msg.rrcTransactionIdentifier = 0;
+  msg.id = msgId;
+  m_rrc->m_rrcSapUser->SendRrcTestMsg (m_rnti, msg);
+
+  Simulator::Schedule (MilliSeconds (10), &UeManager::SendRrcTestMsg, this);
 }
 
 

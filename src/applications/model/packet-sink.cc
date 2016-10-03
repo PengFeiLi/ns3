@@ -31,6 +31,7 @@
 #include "ns3/trace-source-accessor.h"
 #include "ns3/udp-socket-factory.h"
 #include "packet-sink.h"
+#include "seq-ts-header.h"
 
 namespace ns3 {
 
@@ -171,12 +172,21 @@ void PacketSink::HandleRead (Ptr<Socket> socket)
       m_totalRx += packet->GetSize ();
       if (InetSocketAddress::IsMatchingType (from))
         {
+          SeqTsHeader gSeqTs;
+          packet->PeekHeader (gSeqTs);
           NS_LOG_INFO ("At time " << Simulator::Now ().GetSeconds ()
-                       << "s packet sink received "
-                       <<  packet->GetSize () << " bytes from "
-                       << InetSocketAddress::ConvertFrom(from).GetIpv4 ()
-                       << " port " << InetSocketAddress::ConvertFrom (from).GetPort ()
-                       << " total Rx " << m_totalRx << " bytes");
+               << "s packet sink received "
+               <<  packet->GetSize () << " bytes from "
+               << InetSocketAddress::ConvertFrom(from).GetIpv4 ()
+               << " port " << InetSocketAddress::ConvertFrom (from).GetPort ()
+               << " seqNumber " << gSeqTs.GetSeq () );
+
+          // NS_LOG_INFO ("At time " << Simulator::Now ().GetSeconds ()
+          //              << "s packet sink received "
+          //              <<  packet->GetSize () << " bytes from "
+          //              << InetSocketAddress::ConvertFrom(from).GetIpv4 ()
+          //              << " port " << InetSocketAddress::ConvertFrom (from).GetPort ()
+          //              << " total Rx " << m_totalRx << " bytes");
         }
       else if (Inet6SocketAddress::IsMatchingType (from))
         {

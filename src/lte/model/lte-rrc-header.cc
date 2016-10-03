@@ -6826,7 +6826,7 @@ RrcTestMsgHeader::PreSerialize () const
   SerializeDlCcchMessageExtension (0);
 
   // Serialize　
-  SerializeInteger (m_id,0,15);
+  SerializeInteger (m_id,0,1<<16);
 
   // Finish serialization
   FinalizeSerialization ();
@@ -6839,7 +6839,7 @@ RrcTestMsgHeader::Deserialize (Buffer::Iterator bIterator)
   int n;
 
   bIterator = DeserializeDlCcchMessageExtension (bIterator);
-  bIterator = DeserializeInteger (&n,0,15,bIterator);
+  bIterator = DeserializeInteger (&n,0,1<<16,bIterator);
   m_id = n;
 
   return GetSerializedSize ();

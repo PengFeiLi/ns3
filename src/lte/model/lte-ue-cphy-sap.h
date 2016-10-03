@@ -144,6 +144,8 @@ public:
    */
   virtual void SetPa (double pa) = 0;
 
+  virtual void SetSpectrumPhyCellId (uint16_t cellId) = 0;
+
 };
 
 
@@ -237,6 +239,7 @@ public:
   virtual void SetTransmissionMode (uint8_t txMode);
   virtual void SetSrsConfigurationIndex (uint16_t srcCi);
   virtual void SetPa (double pa);
+  virtual void SetSpectrumPhyCellId (uint16_t cellId);
 
 private:
   MemberLteUeCphySapProvider ();
@@ -329,6 +332,13 @@ void
 MemberLteUeCphySapProvider<C>::SetPa (double pa)
 {
   m_owner->DoSetPa (pa);
+}
+
+template <class C>
+void
+MemberLteUeCphySapProvider<C>::SetSpectrumPhyCellId (uint16_t cellId)
+{
+  m_owner->DoSetSpectrumPhyCellId (cellId);
 }
 
 

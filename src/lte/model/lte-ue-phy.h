@@ -473,6 +473,8 @@ private:
   Ptr<SpectrumValue> m_noisePsd; ///< Noise power spectral density for
                                  ///the configured bandwidth 
 
+private:
+  void DoSetSpectrumPhyCellId (uint16_t cellId);
 }; // end of `class LteUePhy`
 
 

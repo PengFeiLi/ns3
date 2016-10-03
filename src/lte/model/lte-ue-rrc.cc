@@ -159,6 +159,10 @@ LteUeRrc::LteUeRrc ()
   m_smallCmacSapUser = new UeMemberLteUeCmacSapUser (this);
   m_smallRrcSapProvider = new SmallLteUeRrcSapProvider<LteUeRrc> (this);
   m_smallDrbPdcpSapUser = new LtePdcpSpecificLtePdcpSapUser<LteUeRrc> (this);
+
+  m_period = 80;
+  m_ratio = 0.3;
+  m_path = PATH_CONTROL;
 }
 
 
@@ -612,7 +616,7 @@ LteUeRrc::DoStartCellSelection (uint16_t dlEarfcn)
   NS_ASSERT_MSG (m_state == IDLE_START,
                  "cannot start cell selection from state " << ToString (m_state));
   m_dlEarfcn = dlEarfcn;
-  m_smallDlEarfcn = dlEarfcn;
+  m_smallDlEarfcn = 200;
   m_cphySapProvider->StartCellSearch (dlEarfcn);
   SwitchToState (IDLE_CELL_SEARCH);
 }
@@ -895,8 +899,7 @@ LteUeRrc::DoRecvRrcConnectionSetup (LteRrcSap::RrcConnectionSetup msg)
 
 void LteUeRrc::DoRecvRrcTestMsg (LteRrcSap::RrcTestMsg msg)
 {
-  NS_LOG_FUNCTION (this << " RNTI " << m_rnti);
-  NS_LOG_INFO ("receive test msg, id " << msg.id);
+  NS_LOG_INFO ("receive test msg, msgId " << msg.id);
 }
 
 void
@@ -3406,6 +3409,7 @@ LteUeRrc::DoRecvRrcSmallConnectionSetup (LteRrcSap::RrcConnectionSetup msg)
         m_rrcSapUser->SendRrcConnectionSetupCompleted (msg2);
         m_asSapUser->NotifyConnectionSuccessful ();
         SmallSwitchToState (CONNECTED_NORMALLY);
+        SwitchPath ();
       }
       break;
 
@@ -3545,6 +3549,44 @@ LteUeRrc::ApplySmallConnectionSetup (LteRrcSap::RadioResourceConfigDedicated rrc
       //Remove LCID
       m_smallCmacSapProvider->RemoveLc (drbid + 2);
     }
+}
+
+static const std::string pathName[LteUeRrc::NUM_PATHS] = 
+    {
+      "PATH_CONTROL",
+      "PATH_DATA"
+    };
+
+static const std::string& PathToString (LteUeRrc::Path path)
+{
+  return pathName[path];
+}
+
+void
+LteUeRrc::SwitchPath ()
+{
+  NS_ASSERT_MSG (m_state == CONNECTED_NORMALLY && m_smallState == CONNECTED_NORMALLY,
+                  "must be connected to macro cell and small cell first");
+
+  if (m_path == PATH_CONTROL)
+    {
+      m_path = PATH_DATA;
+      m_cphySapProvider->SetSpectrumPhyCellId (0);
+      m_smallCphySapProvider->SetSpectrumPhyCellId (m_smallCellId);
+    }
+  else if (m_path == PATH_DATA)
+    {
+      m_path = PATH_CONTROL;
+      m_smallCphySapProvider->SetSpectrumPhyCellId (0);
+      m_cphySapProvider->SetSpectrumPhyCellId (m_cellId);
+    }
+  else
+    NS_FATAL_ERROR ("unexpected value for m_path");
+
+  NS_LOG_INFO ("switch to path: " << PathToString(m_path));
+
+  m_ratio = 1 - m_ratio;
+  Simulator::Schedule (MilliSeconds (m_period * m_ratio), &LteUeRrc::SwitchPath, this);
 }
 
 } // namespace ns3

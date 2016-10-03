@@ -990,6 +990,22 @@ private:
   std::map <uint8_t, Ptr<LteDataRadioBearerInfo> > m_smallDrbMap;
   std::map<uint8_t, uint8_t> m_smallBid2DrbidMap;
 
+public:
+  enum Path
+  {
+    PATH_CONTROL,
+    PATH_DATA,
+    NUM_PATHS
+  };
+
+private:
+  Path m_path;
+
+  //control和data时分复用(ms)
+  uint32_t m_period;
+  float m_ratio;
+
+  void SwitchPath ();
 
   bool isMacroCell (uint16_t cellId);
   bool isSmallCell (uint16_t cellId);
