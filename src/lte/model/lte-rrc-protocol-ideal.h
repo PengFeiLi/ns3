@@ -125,6 +125,7 @@ private:
   void DoSendRrcConnectionSetup (uint16_t rnti, LteRrcSap::RrcConnectionSetup msg);
   void DoSendRrcSmallConnectionSetup (uint16_t rnti, LteRrcSap::RrcConnectionSetup msg);
   void DoSendRrcTestMsg (uint16_t rnti, LteRrcSap::RrcTestMsg msg);
+  void DoSendSyncSmallCellId (uint16_t rnti, LteRrcSap::CellIdMsg msg);
   void DoSendRrcConnectionReconfiguration (uint16_t rnti, LteRrcSap::RrcConnectionReconfiguration msg);
   void DoSendRrcConnectionReestablishment (uint16_t rnti, LteRrcSap::RrcConnectionReestablishment msg);
   void DoSendRrcConnectionReestablishmentReject (uint16_t rnti, LteRrcSap::RrcConnectionReestablishmentReject msg);

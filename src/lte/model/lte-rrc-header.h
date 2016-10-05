@@ -203,6 +203,23 @@ private:
   mutable LteRrcSap::RadioResourceConfigDedicated m_radioResourceConfigDedicated;
 };
 
+class RrcSmallCellSyncHeader : public RrcDlDcchMessageExt
+{
+public:
+  RrcSmallCellSyncHeader ();
+  ~RrcSmallCellSyncHeader ();
+
+  void PreSerialize () const;
+  uint32_t Deserialize (Buffer::Iterator bIterator);
+  void Print (std::ostream &os) const;
+
+  void SetMessage (LteRrcSap::CellIdMsg msg);
+  LteRrcSap::CellIdMsg GetMessage () const;
+
+private:
+  uint16_t m_cellId;
+};
+
 /**
  * This class only serves to discriminate which message type has been received
  * in uplink (ue to eNb) for channel CCCH

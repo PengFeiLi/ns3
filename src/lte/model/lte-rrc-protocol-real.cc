@@ -423,14 +423,24 @@ LteUeRrcProtocolReal::DoReceivePdcpSdu2 (LtePdcpSapUser::ReceivePdcpSduParameter
   RrcDlDcchMessageExt rrcDlDcchMessageExt;
   params.pdcpSdu->PeekHeader (rrcDlDcchMessageExt);
 
+  RrcSmallConnectionSetupHeader rrcSmallConnectionSetupHeader;
+  RrcSmallCellSyncHeader rrcSmallCellSyncHeader;
+
+  LteRrcSap::RrcConnectionSetup rrcConnectionSetupMsg;
+  LteRrcSap::CellIdMsg cellIdMsg;
+
   switch (rrcDlDcchMessageExt.GetMessageType ())
   {
     case 1:
-      RrcSmallConnectionSetupHeader rrcSmallConnectionSetupHeader;
-      LteRrcSap::RrcConnectionSetup msg;
       params.pdcpSdu->RemoveHeader (rrcSmallConnectionSetupHeader);
-      msg = rrcSmallConnectionSetupHeader.GetMessage ();
-      m_ueRrcSapProvider->RecvRrcSmallConnectionSetup (msg);
+      rrcConnectionSetupMsg = rrcSmallConnectionSetupHeader.GetMessage ();
+      m_ueRrcSapProvider->RecvRrcSmallConnectionSetup (rrcConnectionSetupMsg);
+      break;
+
+    case 2:
+      params.pdcpSdu->RemoveHeader (rrcSmallCellSyncHeader);
+      cellIdMsg = rrcSmallCellSyncHeader.GetMessage ();
+      m_ueRrcSapProvider->RecvSyncSmallCellId (cellIdMsg);
       break;
   }
 }
@@ -690,6 +700,26 @@ LteEnbRrcProtocolReal::DoSendRrcTestMsg (uint16_t rnti, LteRrcSap::RrcTestMsg ms
   transmitPdcpPduParameters.lcid = 0;
 
   m_setupUeParametersMap[rnti].srb0SapProvider->TransmitPdcpPdu (transmitPdcpPduParameters);
+}
+
+void
+LteEnbRrcProtocolReal::DoSendSyncSmallCellId (uint16_t rnti, LteRrcSap::CellIdMsg msg)
+{
+    NS_LOG_INFO ("Send Sync Small Cell Id to rnti " << rnti);
+
+    Ptr<Packet> packet = Create<Packet> ();
+
+    RrcSmallCellSyncHeader rrcSmallCellSyncHeader;
+    rrcSmallCellSyncHeader.SetMessage (msg);
+
+    packet->AddHeader (rrcSmallCellSyncHeader);
+
+    LtePdcpSapProvider::TransmitPdcpSduParameters transmitPdcpSduParameters;
+    transmitPdcpSduParameters.pdcpSdu = packet;
+    transmitPdcpSduParameters.rnti = rnti;
+    transmitPdcpSduParameters.lcid = 1;
+
+    m_setupUeParametersMap[rnti].srb1SapProvider->TransmitPdcpSdu (transmitPdcpSduParameters);
 }
 
 void 

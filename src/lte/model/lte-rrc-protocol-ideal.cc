@@ -410,6 +410,15 @@ LteEnbRrcProtocolIdeal::DoSendRrcSmallConnectionSetup (uint16_t rnti, LteRrcSap:
 }
 
 void
+LteEnbRrcProtocolIdeal::DoSendSyncSmallCellId (uint16_t rnti, LteRrcSap::CellIdMsg msg)
+{
+  Simulator::Schedule (RRC_IDEAL_MSG_DELAY,
+          &LteUeRrcSapProvider::RecvSyncSmallCellId,
+          GetUeRrcSapProvider (rnti),
+          msg);
+}
+
+void
 LteEnbRrcProtocolIdeal::DoSendRrcTestMsg (uint16_t rnti, LteRrcSap::RrcTestMsg msg)
 {
   Simulator::Schedule (RRC_IDEAL_MSG_DELAY,

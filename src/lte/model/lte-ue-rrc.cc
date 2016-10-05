@@ -101,7 +101,8 @@ static const std::string g_ueRrcStateName[LteUeRrc::NUM_STATES] =
   "CONNECTED_NORMALLY",
   "CONNECTED_HANDOVER",
   "CONNECTED_PHY_PROBLEM",
-  "CONNECTED_REESTABLISHING"
+  "CONNECTED_REESTABLISHING",
+  "IDLE_WAIT_SYNC_SMALLCELL"
 };
 
 /**
@@ -2945,6 +2946,7 @@ LteUeRrc::SmallSwitchToState (State newState)
       break;
 
     case IDLE_CELL_SEARCH:
+    case IDLE_WAIT_SYNC_SMALLCELL:
     case IDLE_WAIT_MIB_SIB1:
     case IDLE_WAIT_MIB:
     case IDLE_WAIT_SIB1:
@@ -3051,6 +3053,7 @@ LteUeRrc::DoReportSmallUeMeasurements (LteUeCphySapUser::UeMeasurementsParameter
       // start decoding BCH
       // SmallSynchronizeToStrongestCell ();
       ReportSmallCellSearchMeasurements ();
+      SmallSwitchToState (IDLE_WAIT_SYNC_SMALLCELL);
     }
   // else
   //   {
@@ -3421,6 +3424,17 @@ LteUeRrc::DoRecvRrcSmallConnectionSetup (LteRrcSap::RrcConnectionSetup msg)
 }
 
 void
+LteUeRrc::DoRecvSyncSmallCellId (LteRrcSap::CellIdMsg msg)
+{
+  NS_LOG_FUNCTION (this << "RNTI" << m_rnti);
+
+  NS_LOG_LOGIC (this << " cell " << msg.cellId
+                         << " is the strongest untried surrounding small cell");
+  m_smallCphySapProvider->SynchronizeWithEnb (msg.cellId, m_smallDlEarfcn);
+  SmallSwitchToState (IDLE_WAIT_MIB_SIB1);
+}
+
+void
 LteUeRrc::ApplySmallConnectionSetup (LteRrcSap::RadioResourceConfigDedicated rrcd)
 {
 
@@ -3606,6 +3620,9 @@ LteUeRrc::ReportSmallCellSearchMeasurements ()
   for (storedMeasIt = m_smallStoredMeasValues.begin ();
         storedMeasIt != m_smallStoredMeasValues.end (); ++storedMeasIt)
     {
+        if (!isBelongTo (storedMeasIt->first, m_cellId))
+          continue;
+
         LteRrcSap::MeasResultEutra measResultEutra;
         measResultEutra.physCellId = storedMeasIt->first;
         measResultEutra.haveRsrpResult = true;
@@ -3615,9 +3632,9 @@ LteUeRrc::ReportSmallCellSearchMeasurements ()
 
         NS_LOG_INFO (this << " reporting small cell search measurements " << (uint32_t) measResultEutra.physCellId 
                           << " RSRP " << (uint32_t) measResultEutra.rsrpResult
-                          << " (" << neighborMeasIt->second.rsrp << " dBm)"
+                          << " (" << storedMeasIt->second.rsrp << " dBm)"
                           << " RSRQ " << (uint32_t) measResultEutra.rsrqResult
-                          << " (" << neighborMeasIt->second.rsrq << " dB)");
+                          << " (" << storedMeasIt->second.rsrq << " dB)");
 
         measResults.measResultListEutra.push_back (measResultEutra);
         measResults.haveMeasResultNeighCells = true;

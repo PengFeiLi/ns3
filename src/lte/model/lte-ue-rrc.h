@@ -100,6 +100,7 @@ public:
     CONNECTED_HANDOVER,
     CONNECTED_PHY_PROBLEM,
     CONNECTED_REESTABLISHING,
+    IDLE_WAIT_SYNC_SMALLCELL,
     NUM_STATES
   };
 
@@ -329,6 +330,7 @@ private:
   /// Part of the RRC protocol. Implement the LteUeRrcSapProvider::RecvRrcConnectionSetup interface.
   void DoRecvRrcConnectionSetup (LteRrcSap::RrcConnectionSetup msg);
   void DoRecvRrcSmallConnectionSetup (LteRrcSap::RrcConnectionSetup msg);
+  void DoRecvSyncSmallCellId (LteRrcSap::CellIdMsg msg);
   /// Part of the RRC protocol. Implement the LteUeRrcSapProvider::RecvRrcTestMsg interface.
   void DoRecvRrcTestMsg (LteRrcSap::RrcTestMsg msg);
   /// Part of the RRC protocol. Implement the LteUeRrcSapProvider::RecvRrcConnectionReconfiguration interface.

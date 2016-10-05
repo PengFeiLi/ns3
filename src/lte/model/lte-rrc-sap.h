@@ -661,6 +661,11 @@ public:
     uint64_t ueIdentity;
   };
 
+  struct CellIdMsg
+  {
+    uint16_t cellId;
+  };
+
   struct RrcSmallConnectionRequest
   {
     uint16_t cellId;
@@ -858,6 +863,8 @@ public:
 
   virtual void RecvRrcSmallConnectionSetup (RrcConnectionSetup msg) = 0;
 
+  virtual void RecvSyncSmallCellId (CellIdMsg msg) = 0;
+
   /**
    * \brief Receive an RRCTestMsg message from the serving eNodeB
    *        after an RRC connection established
@@ -947,6 +954,8 @@ public:
   virtual void SendRrcSmallConnectionSetup (uint16_t rnti, RrcConnectionSetup msg) = 0;
 
   virtual void SendRrcTestMsg (uint16_t rnti, RrcTestMsg msg) = 0;
+
+  virtual void SendSyncSmallCellId (uint16_t rnti, CellIdMsg msg) = 0;
 
   /**
    * \brief Send an _RRCConnectionReconfiguration_ message to a UE
@@ -1212,6 +1221,7 @@ public:
   virtual void RecvSystemInformation (SystemInformation msg);
   virtual void RecvRrcConnectionSetup (RrcConnectionSetup msg);
   virtual void RecvRrcSmallConnectionSetup (RrcConnectionSetup msg);
+  virtual void RecvSyncSmallCellId (CellIdMsg msg);
   virtual void RecvRrcTestMsg (RrcTestMsg msg);
   virtual void RecvRrcConnectionReconfiguration (RrcConnectionReconfiguration msg);
   virtual void RecvRrcConnectionReestablishment (RrcConnectionReestablishment msg);
@@ -1261,6 +1271,13 @@ void
 MemberLteUeRrcSapProvider<C>::RecvRrcSmallConnectionSetup (RrcConnectionSetup msg)
 {
   Simulator::ScheduleNow (&C::DoRecvRrcSmallConnectionSetup, m_owner, msg);
+}
+
+template <class C>
+void
+MemberLteUeRrcSapProvider<C>::RecvSyncSmallCellId (CellIdMsg msg)
+{
+  Simulator::ScheduleNow (&C::DoRecvSyncSmallCellId, m_owner, msg);
 }
 
 template <class C>
@@ -1316,6 +1333,7 @@ public:
   virtual void RecvSystemInformation (SystemInformation msg);
   virtual void RecvRrcConnectionSetup (RrcConnectionSetup msg) {};
   virtual void RecvRrcSmallConnectionSetup (RrcConnectionSetup msg) {};
+  virtual void RecvSyncSmallCellId (CellIdMsg msg) {};
   virtual void RecvRrcTestMsg (RrcTestMsg msg) {};
   virtual void RecvRrcConnectionReconfiguration (RrcConnectionReconfiguration msg) {};
   virtual void RecvRrcConnectionReestablishment (RrcConnectionReestablishment msg) {};
@@ -1360,6 +1378,7 @@ public:
   virtual void SendRrcConnectionSetup (uint16_t rnti, RrcConnectionSetup msg);
   virtual void SendRrcSmallConnectionSetup (uint16_t rnti, RrcConnectionSetup msg);
   virtual void SendRrcTestMsg (uint16_t rnti, RrcTestMsg msg);
+  virtual void SendSyncSmallCellId (uint16_t rnti, CellIdMsg msg);
   virtual void SendRrcConnectionReconfiguration (uint16_t rnti, RrcConnectionReconfiguration msg);
   virtual void SendRrcConnectionReestablishment (uint16_t rnti, RrcConnectionReestablishment msg);
   virtual void SendRrcConnectionReestablishmentReject (uint16_t rnti, RrcConnectionReestablishmentReject msg);
@@ -1426,6 +1445,13 @@ void
 MemberLteEnbRrcSapUser<C>::SendRrcTestMsg (uint16_t rnti, RrcTestMsg msg)
 {
   m_owner->DoSendRrcTestMsg (rnti, msg);
+}
+
+template <class C>
+void
+MemberLteEnbRrcSapUser<C>::SendSyncSmallCellId (uint16_t rnti, CellIdMsg msg)
+{
+  m_owner->DoSendSyncSmallCellId (rnti, msg);
 }
 
 template <class C>

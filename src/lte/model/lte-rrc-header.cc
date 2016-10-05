@@ -6629,6 +6629,61 @@ RrcSmallConnectionSetupHeader::GetMessage () const
   return msg;
 }
 
+//////////////////// RrcSmallCellSyncHeader class ////////////////////////
+RrcSmallCellSyncHeader::RrcSmallCellSyncHeader ()
+{
+}
+ 
+RrcSmallCellSyncHeader::~RrcSmallCellSyncHeader ()
+{
+}
+ 
+void
+RrcSmallCellSyncHeader::Print (std::ostream &os) const
+{
+  os << "sync small cell id: " << (int)m_cellId << std::endl;
+}
+
+void
+RrcSmallCellSyncHeader::PreSerialize () const
+{
+  m_serializationResult = Buffer ();
+
+  SerializeDlDcchMessageExt (2);
+
+  SerializeInteger (m_cellId,0,0xFFFF);
+
+  // Finish serialization
+  FinalizeSerialization ();
+}
+
+
+uint32_t
+RrcSmallCellSyncHeader::Deserialize (Buffer::Iterator bIterator)
+{
+  int n;
+
+  bIterator = DeserializeDlDcchMessageExt (bIterator);
+  bIterator = DeserializeInteger (&n,0,0xFFFF,bIterator);
+  m_cellId = n;
+
+  return GetSerializedSize ();
+}
+
+void
+RrcSmallCellSyncHeader::SetMessage (LteRrcSap::CellIdMsg msg)
+{
+  m_cellId = msg.cellId;
+}
+
+LteRrcSap::CellIdMsg
+RrcSmallCellSyncHeader::GetMessage () const
+{
+  LteRrcSap::CellIdMsg msg;
+  msg.cellId = m_cellId;
+  return msg;
+}
+
 ///////////////////  RrcUlCcchMessage //////////////////////////////////
 RrcUlCcchMessage::RrcUlCcchMessage () : RrcAsn1Header ()
 {
