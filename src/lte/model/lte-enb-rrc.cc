@@ -111,6 +111,7 @@ static const std::string g_ueManagerStateName[UeManager::NUM_STATES] =
   "HANDOVER_JOINING",
   "HANDOVER_PATH_SWITCH",
   "HANDOVER_LEAVING",
+  "WAIT_MEAS",
   "WAIT_UEREQ",
   "WAIT_SMALLSETUP",
   "WAIT_UESETUP",
@@ -150,7 +151,7 @@ UeManager::UeManager (Ptr<LteEnbRrc> rrc, uint16_t rnti, State s)
 { 
   NS_LOG_FUNCTION (this);
 
-  m_smallState = WAIT_UEREQ;
+  m_smallState = WAIT_MEAS;
 }
 
 void
@@ -1091,6 +1092,30 @@ UeManager::RecvRrcConnectionReestablishmentComplete (LteRrcSap::RrcConnectionRee
   SwitchToState (CONNECTED_NORMALLY);
 }
 
+void DoRecvSmallCellSearchMeasurements (LteRrcSap::MeasResults measResults)
+{
+  NS_LOG_FUNCTION (this);
+
+  uint16_t maxRsrpCellId = 0;
+  double maxRsrp = -std::numeric_limits<double>::infinity ();
+  std::list<MeasResultEutra>::iterator mreIt;
+
+  for (mreIt = measResults.measResultListEutra.begin ();
+        mreIt != measResults.measResultListEutra.end (); ++mreIt)
+    {
+      double rsrp = (double) mreIt->rsrpResult;
+      if (maxRsrp < rsrp)
+        {
+          maxRsrp = rsrp;
+          maxRsrpCellId = mreIt->physCellId;
+        }
+    }
+
+  NS_LOG_INFO ( "small cell synchronization decision, rnti " << m_rnti << " small cellId " << maxRsrpCellId);
+  m_rrc->m_rrcSapUser->SendSyncSmallCellId ();
+  SmallSwitchToState (WAIT_UEREQ);
+}
+
 void 
 UeManager::RecvMeasurementReport (LteRrcSap::MeasurementReport msg)
 {
@@ -1099,6 +1124,14 @@ UeManager::RecvMeasurementReport (LteRrcSap::MeasurementReport msg)
   NS_LOG_LOGIC ("measId " << (uint16_t) measId
                           << " haveMeasResultNeighCells " << msg.measResults.haveMeasResultNeighCells
                           << " measResultListEutra " << msg.measResults.measResultListEutra.size ());
+
+  if (measId & msg.rsrpResult & msg.rsrqResult)
+    {
+        NS_LOG_LOGIC ("receive small cell search measurements");
+        DoRecvSmallCellSearchMeasurements (msg.measResults);
+        return;
+    }
+
   NS_LOG_LOGIC ("serving cellId " << m_rrc->m_cellId
                                   << " RSRP " << (uint16_t) msg.measResults.rsrpResult
                                   << " RSRQ " << (uint16_t) msg.measResults.rsrqResult);

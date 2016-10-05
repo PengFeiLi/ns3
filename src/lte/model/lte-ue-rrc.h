@@ -1006,6 +1006,7 @@ private:
   float m_ratio;
 
   void SwitchPath ();
+  void ReportSmallCellSearchMeasurements ();
 
   bool isMacroCell (uint16_t cellId);
   bool isSmallCell (uint16_t cellId);

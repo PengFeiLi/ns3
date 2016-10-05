@@ -82,6 +82,7 @@ public:
     HANDOVER_JOINING,
     HANDOVER_PATH_SWITCH,
     HANDOVER_LEAVING,
+    WAIT_MEAS;
     WAIT_UEREQ,
     WAIT_SMALLSETUP,
     WAIT_UESETUP,
@@ -511,6 +512,7 @@ private:
   void SmallSwitchToState (State newState);
   void DoSmallConnectionSetupCompleted (LteRrcSap::RrcConnectionSetupCompleted msg);
   void SendRrcTestMsg ();
+  void DoRecvSmallCellSearchMeasurements (LteRrcSap::MeasResults measResults);
 
 public:
   void RecvRrcSmallConnectionRequest (LteRrcSap::RrcSmallConnectionRequest msg);

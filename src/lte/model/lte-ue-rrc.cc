@@ -3049,7 +3049,8 @@ LteUeRrc::DoReportSmallUeMeasurements (LteUeCphySapUser::UeMeasurementsParameter
   if (m_state == CONNECTED_NORMALLY && m_smallState == IDLE_CELL_SEARCH)
     {
       // start decoding BCH
-      SmallSynchronizeToStrongestCell ();
+      // SmallSynchronizeToStrongestCell ();
+      ReportSmallCellSearchMeasurements ();
     }
   // else
   //   {
@@ -3587,6 +3588,49 @@ LteUeRrc::SwitchPath ()
 
   m_ratio = 1 - m_ratio;
   Simulator::Schedule (MilliSeconds (m_period * m_ratio), &LteUeRrc::SwitchPath, this);
+}
+
+void
+LteUeRrc::ReportSmallCellSearchMeasurements ()
+{
+  NS_LOG_FUNCTION (this);
+
+  LteRrcSap::MeasurementReport measurementReport;
+  LteRrcSap::MeasResults& measResults = measurementReport.measResults;
+  measResults.measId = 0xFF;
+  measResults.rsrpResult = 0xFF;
+  measResults.rsrqResult = 0xFF;
+  measResults.haveMeasResultNeighCells = false;
+
+  std::map<uint16_t, MeasValues>::iterator storedMeasIt;
+  for (storedMeasIt = m_smallStoredMeasValues.begin ();
+        storedMeasIt != m_smallStoredMeasValues.end (); ++storedMeasIt)
+    {
+        LteRrcSap::MeasResultEutra measResultEutra;
+        measResultEutra.physCellId = storedMeasIt->first;
+        measResultEutra.haveRsrpResult = true;
+        measResultEutra.rsrpResult = EutranMeasurementMapping::Dbm2RsrpRange (storedMeasIt->second.rsrp);
+        measResultEutra.haveRsrqResult = true;
+        measResultEutra.rsrqResult = EutranMeasurementMapping::Db2RsrqRange (storedMeasIt->second.rsrq);
+
+        NS_LOG_INFO (this << " reporting small cell search measurements " << (uint32_t) measResultEutra.physCellId 
+                          << " RSRP " << (uint32_t) measResultEutra.rsrpResult
+                          << " (" << neighborMeasIt->second.rsrp << " dBm)"
+                          << " RSRQ " << (uint32_t) measResultEutra.rsrqResult
+                          << " (" << neighborMeasIt->second.rsrq << " dB)");
+
+        measResults.measResultListEutra.push_back (measResultEutra);
+        measResults.haveMeasResultNeighCells = true;
+    }
+
+    if (measResults.haveMeasResultNeighCells)
+      {
+          m_rrcSapUser->SendMeasurementReport (measurementReport);
+      }
+    else
+      {
+          NS_LOG_WARN (this << "small cell search measurements is empty");
+      }
 }
 
 } // namespace ns3
