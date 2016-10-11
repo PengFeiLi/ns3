@@ -316,6 +316,9 @@ UeManager::SmallInitialize (uint16_t cellId, uint64_t imsi)
   params.targetCellId = m_macroCellId;
   params.rnti = m_rnti;
   params.rrcd = rrcd;
+  NS_LOG_INFO ("Small Cell " << m_rrc->m_cellId 
+                  << " send SmallCellSetup_X2C to Macro Cell "
+                  << cellId);
   m_rrc->m_x2SapProvider->SendRrConfig (params);
 }
 
@@ -910,7 +913,7 @@ void
 UeManager::RecvRrcSmallConnectionRequest (LteRrcSap::RrcSmallConnectionRequest msg)
 {
   NS_LOG_FUNCTION (this);
-  NS_LOG_INFO ("receive small connection request");
+  NS_LOG_INFO ("Macro Cell " << m_rrc->m_cellId << " receive SmallCellSetupReq_Srb1 from UE " << m_imsi);
 
   m_smallCellId = msg.cellId;
 
@@ -919,6 +922,9 @@ UeManager::RecvRrcSmallConnectionRequest (LteRrcSap::RrcSmallConnectionRequest m
   params.targetCellId = msg.cellId;
   params.rnti = m_rnti;
   params.imsi = m_imsi;
+  NS_LOG_INFO ("Macro Cell " << m_rrc->m_cellId 
+                << " send SmallCellSetupReq_X2C to Small Cell "
+                << msg.cellId);
   m_rrc->m_x2SapProvider->SendConnectionRequest (params);
   SmallSwitchToState (WAIT_SMALLSETUP);
 }
@@ -927,11 +933,15 @@ void
 UeManager::RecvSmallRrcd (LteRrcSap::RadioResourceConfigDedicated rrcd)
 {
   NS_LOG_FUNCTION (this);
-  NS_LOG_INFO ("receive small cell rrcd");
-
+  NS_LOG_INFO ("Macro Cell " << m_rrc->m_cellId 
+                << " receive SmallCellSetup_X2C from Small Cell "
+                << m_smallCellId);
   LteRrcSap::RrcConnectionSetup msg;
   msg.rrcTransactionIdentifier =  GetNewRrcTransactionIdentifier ();
   msg.radioResourceConfigDedicated = rrcd;
+  NS_LOG_INFO ("Macro Cell " << m_rrc->m_cellId 
+                << " send SmallCellSetup_Srb1 to UE " << m_imsi);
+
   m_rrc->m_rrcSapUser->SendRrcSmallConnectionSetup (m_rnti, msg);
   SmallSwitchToState (WAIT_UESETUP);
 }
@@ -975,6 +985,9 @@ UeManager::RecvX2ConnectionSetupCompleted ()
 {
   NS_LOG_FUNCTION (this);
 
+  NS_LOG_INFO ("Small Cell " << m_rrc->m_cellId 
+                  << " receive SmallCellCompleted_X2C from Macro Cell "
+                  << m_macroCellId);
   StartDataRadioBearers ();
   SwitchToState (CONNECTED_NORMALLY);
 }
@@ -984,14 +997,20 @@ UeManager::DoSmallConnectionSetupCompleted (LteRrcSap::RrcConnectionSetupComplet
 {
   NS_LOG_FUNCTION (this);
   NS_ASSERT_MSG (m_state == CONNECTED_NORMALLY, "must connect to the macro cell first, m_state=" + ToString (m_state));
+  NS_LOG_INFO ("Macro Cell " << m_rrc->m_cellId << " receive SmallCellCompleted_Srb1 from UE " << m_imsi);
 
   EpcX2Sap::SmallConnCompletedParams params;
   params.sourceCellId = m_rrc->m_cellId;
   params.targetCellId = m_smallCellId;
   params.rnti = m_rnti; 
+
+  NS_LOG_INFO ("Macro Cell " << m_rrc->m_cellId 
+                << " send SmallCellCompleted_X2C to Small Cell "
+                << m_smallCellId);
   m_rrc->m_x2SapProvider->SendSmallConnectionCompleted (params);
   SmallSwitchToState (CONNECTED_SMALL);
-  SendRrcTestMsg ();
+  m_rrc->IncUeOnSmallCell (m_smallCellId);
+  // SendRrcTestMsg ();
 }
 
 void
@@ -1096,24 +1115,42 @@ UeManager::DoRecvSmallCellSearchMeasurements (LteRrcSap::MeasResults measResults
 {
   NS_LOG_FUNCTION (this);
 
-  uint16_t maxRsrpCellId = 0;
+  NS_LOG_INFO ("Macro Cell " << m_rrc->m_cellId << " receive SmallCellMeas_Srb1 from UE " << m_imsi);
+
+  uint16_t maxCellId = 0, resCellId;
   double maxRsrp = -std::numeric_limits<double>::infinity ();
+  uint16_t minCount = 0;
   std::list<LteRrcSap::MeasResultEutra>::iterator mreIt;
 
   for (mreIt = measResults.measResultListEutra.begin ();
         mreIt != measResults.measResultListEutra.end (); ++mreIt)
     {
-      double rsrp = (double) mreIt->rsrpResult;
-      if (maxRsrp < rsrp)
+      NS_LOG_INFO (this << " receiving small cell search measurements " << (uint32_t) mreIt->physCellId 
+                        << " RSRP " << (uint32_t) mreIt->rsrpResult
+                        << " RSRQ " << (uint32_t) mreIt->rsrqResult);
+      if (mreIt->rsrpResult > maxRsrp)
+      {
+        maxRsrp = mreIt->rsrpResult;
+        maxCellId = mreIt->physCellId;
+      }
+    }
+
+  minCount = m_rrc->GetUeOnSmallCell (maxCellId);
+  resCellId = maxCellId;
+  for (mreIt = measResults.measResultListEutra.begin ();
+      mreIt != measResults.measResultListEutra.end (); ++mreIt)
+    {
+      if (maxRsrp - mreIt->rsrpResult < 5 && m_rrc->GetUeOnSmallCell (mreIt->physCellId) < minCount)
         {
-          maxRsrp = rsrp;
-          maxRsrpCellId = mreIt->physCellId;
+          resCellId = mreIt->physCellId;
+          minCount = m_rrc->GetUeOnSmallCell (resCellId);
         }
     }
 
-  NS_LOG_INFO ( "small cell synchronization decision, rnti " << m_rnti << " small cellId " << maxRsrpCellId);
+  NS_LOG_INFO ( "small cell synchronization decision, IMSI " << m_imsi << " RNTI " << m_rnti << " small cellId " << resCellId);
   LteRrcSap::CellIdMsg msg;
-  msg.cellId = maxRsrpCellId;
+  msg.cellId = resCellId;
+  NS_LOG_INFO ("Macro Cell " << m_rrc->m_cellId << " send SmallCellSync_Srb1 to UE " << m_imsi);
   m_rrc->m_rrcSapUser->SendSyncSmallCellId (m_rnti, msg);
 }
 
@@ -1127,7 +1164,7 @@ UeManager::RecvMeasurementReport (LteRrcSap::MeasurementReport msg)
                           << " measResultListEutra " << msg.measResults.measResultListEutra.size ());
 
   LteRrcSap::MeasResults measResults = msg.measResults;
-  if (measId & measResults.rsrpResult & measResults.rsrqResult)
+  if (measId == 32 && measResults.rsrpResult == 97 && measResults.rsrqResult == 34)
     {
         NS_LOG_LOGIC ("receive small cell search measurements");
         DoRecvSmallCellSearchMeasurements (measResults);
@@ -2347,6 +2384,10 @@ LteEnbRrc::DoRecvMacroConnectionRequest (EpcX2SapUser::ConnectionRequestParams p
 
   NS_LOG_LOGIC ("Recv X2 message: CONNECTION REQUEST");
 
+  NS_LOG_INFO ("Small Cell " << m_cellId 
+                  << " receive SmallCellSetupReq_X2C from Macro Cell "
+                  << params.sourceCellId);
+
   Ptr<UeManager> ueManager = CreateObject<UeManager> (this, params.rnti, UeManager::INITIAL_RANDOM_ACCESS);
   m_ueMap.insert (std::pair<uint16_t, Ptr<UeManager> > (params.rnti, ueManager));
   ueManager->SmallInitialize (params.sourceCellId, params.imsi);
@@ -2755,6 +2796,37 @@ LteEnbRrc::SendSystemInformation ()
   Simulator::Schedule (m_systemInformationPeriodicity, &LteEnbRrc::SendSystemInformation, this);
 }
 
+uint16_t
+LteEnbRrc::GetUeOnSmallCell (uint16_t cellId)
+{
+  std::map<uint16_t, uint16_t>::iterator it = m_uePerSmallCell.find (cellId);
+  if (it == m_uePerSmallCell.end ())
+      return 0;
+  else
+      return it->second;
+}
+
+void
+LteEnbRrc::IncUeOnSmallCell (uint16_t cellId)
+{
+  std::map<uint16_t, uint16_t>::iterator it = m_uePerSmallCell.find (cellId);
+  if (it == m_uePerSmallCell.end ())
+      m_uePerSmallCell[cellId] = 1;
+  else
+      it->second += 1;
+}
+
+void
+LteEnbRrc::DecUeOnSmallCell (uint16_t cellId)
+{
+  std::map<uint16_t, uint16_t>::iterator it = m_uePerSmallCell.find (cellId);
+  if (it != m_uePerSmallCell.end ())
+    {
+      it->second -= 1;
+      if (it->second == 0)
+          m_uePerSmallCell.erase (it);
+    }
+}
 
 } // namespace ns3
 

@@ -1287,6 +1287,12 @@ private:
 
 /************ only available on the macro cell side ************/
 private:
+  std::map<uint16_t, uint16_t> m_uePerSmallCell;
+
+  uint16_t GetUeOnSmallCell (uint16_t cellId);
+  void IncUeOnSmallCell (uint16_t cellId);
+  void DecUeOnSmallCell (uint16_t cellId);
+
   void DoRecvRrcSmallConnectionRequest (uint16_t rnti, LteRrcSap::RrcSmallConnectionRequest msg);
   void DoRecvRrcScInfoRequest (uint16_t rnti, LteRrcSap::RrcScInfoRequest msg);
 

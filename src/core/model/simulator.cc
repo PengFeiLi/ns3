@@ -36,6 +36,7 @@
 #include <list>
 #include <vector>
 #include <iostream>
+#include <iomanip>  
 
 /**
  * \file
@@ -84,7 +85,7 @@ static GlobalValue g_schedTypeImpl = GlobalValue ("SchedulerType",
 static void
 TimePrinter (std::ostream &os)
 {
-  os << Simulator::Now ().GetSeconds () << "s";
+  os << std::setiosflags (std::ios::fixed) << std::setprecision (6) << Simulator::Now ().GetSeconds () << "s";
 }
 
 /**

@@ -1360,15 +1360,37 @@ LteHelper::InstallClusterEnbDevice (NodeContainer c, uint16_t numberOfClusters, 
 
   for (uint16_t cluster = 1; cluster<=numberOfClusters; ++cluster)
     {
+      SetEnbDeviceAttribute ("DlEarfcn", UintegerValue (100));
+      SetEnbDeviceAttribute ("UlEarfcn", UintegerValue (100 + 18000));
       device = InstallMacroEnbDevice (*it, cluster);
       devices.Add (device);
       ++it;
       for(uint16_t inode = 1; inode<=nodesPerCluster; ++inode)
         {
+          SetEnbDeviceAttribute ("DlEarfcn", UintegerValue (200));
+          SetEnbDeviceAttribute ("UlEarfcn", UintegerValue (200 + 18000));
           device = InstallSmallEnbDevice (*it, cluster, inode);
           devices.Add (device);
           ++it;
         }
+    }
+  return devices;
+}
+
+NetDeviceContainer
+LteHelper::InstallMacroEnbDevices (NodeContainer c)
+{
+  Initialize ();  // will run DoInitialize () if necessary
+
+  NetDeviceContainer devices;
+  Ptr<NetDevice> device;
+  NodeContainer::Iterator it;
+  uint32_t i;
+  it = c.Begin ();
+  for (i = 1; it != c.End (); ++it, ++i)
+    {
+      device = InstallMacroEnbDevice (*it, i);
+      devices.Add (device);
     }
   return devices;
 }
@@ -1381,13 +1403,32 @@ LteHelper::InstallMacroEnbDevice (Ptr<Node> n, uint16_t cluster)
   return InstallBaseEnbDevice (n, cellId);
 }
 
+NetDeviceContainer
+LteHelper::InstallSmallEnbDevices (NodeContainer c, uint32_t numberPerCluster)
+{
+  NetDeviceContainer devices;
+  Ptr<NetDevice> device;
+  NodeContainer::Iterator it;
+  uint32_t numberOfClusters = c.GetN () / numberPerCluster;
+  if (numberOfClusters * numberPerCluster < c.GetN ())
+    numberOfClusters += 1;
+  uint32_t cluster, i;
+  it = c.Begin ();
+  for (cluster=1; cluster <= numberOfClusters; ++cluster)
+    {
+      for (i=1; i<=numberPerCluster && it != c.End (); ++it, ++i)
+        {
+          device = InstallSmallEnbDevice (*it, cluster, i);
+          devices.Add (device);
+        }
+    }
+  return devices;
+}
+
 Ptr<NetDevice>
 LteHelper::InstallSmallEnbDevice (Ptr<Node> n, uint16_t cluster, uint16_t inode)
 {
   uint16_t cellId = GetSmallCellId (cluster, inode);
-
-  SetEnbDeviceAttribute ("DlEarfcn", UintegerValue (200));
-  SetEnbDeviceAttribute ("UlEarfcn", UintegerValue (200 + 18000));
 
   return InstallBaseEnbDevice (n, cellId);
 }
@@ -1575,6 +1616,12 @@ LteHelper::GetSmallCellId (uint16_t cluster, uint16_t inode)
   NS_ASSERT_MSG ((inode >0 && inode < 0x0040), "the number of nodes exceeded");
 
   return ((cluster << 6) | inode);
+}
+
+void
+LteHelper::AttachDelay (Ptr<NetDevice> ueDevice)
+{
+  Attach (ueDevice);
 }
 
 } // namespace ns3

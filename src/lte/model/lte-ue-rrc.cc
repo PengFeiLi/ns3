@@ -3366,6 +3366,7 @@ LteUeRrc::StartSmallConnection ()
 void
 LteUeRrc::DoSendRrcSmallConnectionRequest ()
 {
+  NS_LOG_INFO ("Ue " << m_imsi << " send SmallCellSetupReq_Srb1 to Macro cellId " << m_cellId);
   LteRrcSap::RrcSmallConnectionRequest msg;
   msg.cellId = m_smallCellId;
   m_rrcSapUser->SendRrcSmallConnectionRequest (msg); 
@@ -3405,15 +3406,17 @@ LteUeRrc::DoRecvRrcSmallConnectionSetup (LteRrcSap::RrcConnectionSetup msg)
     {
     case IDLE_CONNECTING:
       {
+        NS_LOG_INFO ("Ue " << m_imsi << " receive SmallCellSetup_Srb1 from Macro Cell " << m_cellId);
         ApplySmallConnectionSetup (msg.radioResourceConfigDedicated);
         m_smallConnectionTimeout.Cancel ();
         LteRrcSap::RrcConnectionSetupCompleted msg2;
         msg2.cellType = 1;
         msg2.rrcTransactionIdentifier = msg.rrcTransactionIdentifier;
+        NS_LOG_INFO ("Ue " << m_imsi << " send SmallCellCompleted_Srb1 to Macro Cell " << m_cellId);
         m_rrcSapUser->SendRrcConnectionSetupCompleted (msg2);
         m_asSapUser->NotifyConnectionSuccessful ();
         SmallSwitchToState (CONNECTED_NORMALLY);
-        SwitchPath ();
+        Simulator::Schedule (MilliSeconds (20), &LteUeRrc::SwitchPath, this);
       }
       break;
 
@@ -3430,6 +3433,8 @@ LteUeRrc::DoRecvSyncSmallCellId (LteRrcSap::CellIdMsg msg)
 
   NS_LOG_LOGIC (this << " cell " << msg.cellId
                          << " is the strongest untried surrounding small cell");
+
+  NS_LOG_INFO ("Ue " << m_imsi << " receive SmallCellSync_Srb1 from Macro Cell " << m_cellId);
   m_smallCphySapProvider->SynchronizeWithEnb (msg.cellId, m_smallDlEarfcn);
   SmallSwitchToState (IDLE_WAIT_MIB_SIB1);
 }
@@ -3611,11 +3616,13 @@ LteUeRrc::ReportSmallCellSearchMeasurements ()
 
   LteRrcSap::MeasurementReport measurementReport;
   LteRrcSap::MeasResults& measResults = measurementReport.measResults;
-  measResults.measId = 0xFF;
-  measResults.rsrpResult = 0xFF;
-  measResults.rsrqResult = 0xFF;
+  measResults.measId = 32;
+  measResults.rsrpResult = 97;
+  measResults.rsrqResult = 34;
   measResults.haveMeasResultNeighCells = false;
 
+  NS_LOG_INFO ("Ue " << m_imsi << " send SmallCellMeas_Srb1 to Macro Cell " << m_cellId);
+  int i=0;
   std::map<uint16_t, MeasValues>::iterator storedMeasIt;
   for (storedMeasIt = m_smallStoredMeasValues.begin ();
         storedMeasIt != m_smallStoredMeasValues.end (); ++storedMeasIt)
@@ -3625,16 +3632,16 @@ LteUeRrc::ReportSmallCellSearchMeasurements ()
 
         LteRrcSap::MeasResultEutra measResultEutra;
         measResultEutra.physCellId = storedMeasIt->first;
+        measResultEutra.haveCgiInfo = false;
         measResultEutra.haveRsrpResult = true;
         measResultEutra.rsrpResult = EutranMeasurementMapping::Dbm2RsrpRange (storedMeasIt->second.rsrp);
         measResultEutra.haveRsrqResult = true;
         measResultEutra.rsrqResult = EutranMeasurementMapping::Db2RsrqRange (storedMeasIt->second.rsrq);
 
-        NS_LOG_INFO (this << " reporting small cell search measurements " << (uint32_t) measResultEutra.physCellId 
-                          << " RSRP " << (uint32_t) measResultEutra.rsrpResult
-                          << " (" << storedMeasIt->second.rsrp << " dBm)"
-                          << " RSRQ " << (uint32_t) measResultEutra.rsrqResult
-                          << " (" << storedMeasIt->second.rsrq << " dB)");
+        NS_LOG_INFO ("measurement " << ++i
+                        << ": cellId " << (uint32_t) measResultEutra.physCellId 
+                        << " RSRP (" << storedMeasIt->second.rsrp << " dBm)"
+                        << " RSRQ (" << storedMeasIt->second.rsrq << " dB)");
 
         measResults.measResultListEutra.push_back (measResultEutra);
         measResults.haveMeasResultNeighCells = true;

@@ -173,7 +173,7 @@ main (int argc, char *argv[])
       // client.SetAttribute ("MaxPackets", UintegerValue(1000000));
 
       clientApps.Add (dlClient.Install (remoteHost));
-      clientApps.Add (ulClient.Install (ueNodes.Get(u)));
+      // clientApps.Add (ulClient.Install (ueNodes.Get(u)));
       // if (u+1 < ueNodes.GetN ())
       //   {
       //     clientApps.Add (client.Install (ueNodes.Get(u+1)));

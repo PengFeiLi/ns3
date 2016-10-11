@@ -740,6 +740,10 @@ private:
 
 public:
     NetDeviceContainer InstallClusterEnbDevice (NodeContainer c, uint16_t numberOfClusters, uint16_t nodesPerCluster);
+    NetDeviceContainer InstallMacroEnbDevices (NodeContainer c);
+    NetDeviceContainer InstallSmallEnbDevices (NodeContainer c, uint32_t numberPerCluster);
+    void AttachDelay (Ptr<NetDevice> ueDevice);
+
 
 private:
     Ptr<NetDevice> InstallBaseEnbDevice (Ptr<Node> n, uint16_t cellId);
