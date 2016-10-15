@@ -1406,6 +1406,7 @@ LteHelper::InstallMacroEnbDevice (Ptr<Node> n, uint16_t cluster)
 NetDeviceContainer
 LteHelper::InstallSmallEnbDevices (NodeContainer c, uint32_t numberPerCluster)
 {
+  SetFfrAlgorithmType ("ns3::LteFrHardAlgorithm");
   NetDeviceContainer devices;
   Ptr<NetDevice> device;
   NodeContainer::Iterator it;
@@ -1418,6 +1419,7 @@ LteHelper::InstallSmallEnbDevices (NodeContainer c, uint32_t numberPerCluster)
     {
       for (i=1; i<=numberPerCluster && it != c.End (); ++it, ++i)
         {
+          SetFfrAlgorithmAttribute ("FrCellTypeId", UintegerValue ((i-1)%3));
           device = InstallSmallEnbDevice (*it, cluster, i);
           devices.Add (device);
         }
