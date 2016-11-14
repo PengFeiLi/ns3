@@ -3416,7 +3416,7 @@ LteUeRrc::DoRecvRrcSmallConnectionSetup (LteRrcSap::RrcConnectionSetup msg)
         m_rrcSapUser->SendRrcConnectionSetupCompleted (msg2);
         m_asSapUser->NotifyConnectionSuccessful ();
         SmallSwitchToState (CONNECTED_NORMALLY);
-        Simulator::Schedule (MilliSeconds (20), &LteUeRrc::SwitchPath, this);
+        // Simulator::Schedule (MilliSeconds (20), &LteUeRrc::SwitchPath, this);
       }
       break;
 

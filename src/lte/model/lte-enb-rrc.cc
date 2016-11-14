@@ -1137,15 +1137,15 @@ UeManager::DoRecvSmallCellSearchMeasurements (LteRrcSap::MeasResults measResults
 
   minCount = m_rrc->GetUeOnSmallCell (maxCellId);
   resCellId = maxCellId;
-  for (mreIt = measResults.measResultListEutra.begin ();
-      mreIt != measResults.measResultListEutra.end (); ++mreIt)
-    {
-      if (maxRsrp - mreIt->rsrpResult < 5 && m_rrc->GetUeOnSmallCell (mreIt->physCellId) < minCount)
-        {
-          resCellId = mreIt->physCellId;
-          minCount = m_rrc->GetUeOnSmallCell (resCellId);
-        }
-    }
+  // for (mreIt = measResults.measResultListEutra.begin ();
+  //     mreIt != measResults.measResultListEutra.end (); ++mreIt)
+  //   {
+  //     if (maxRsrp - mreIt->rsrpResult < 5 && m_rrc->GetUeOnSmallCell (mreIt->physCellId) < minCount)
+  //       {
+  //         resCellId = mreIt->physCellId;
+  //         minCount = m_rrc->GetUeOnSmallCell (resCellId);
+  //       }
+  //   }
 
   NS_LOG_INFO ( "small cell synchronization decision, IMSI " << m_imsi << " RNTI " << m_rnti << " small cellId " << resCellId);
   LteRrcSap::CellIdMsg msg;
