@@ -413,6 +413,22 @@ EpcX2::RecvFromX2cSocket (Ptr<Socket> socket)
           m_x2SapUser->RecvSmallConnectionCompleted (params);
         }
     }
+  else if (procedureCode == EpcX2Header::OnOffRequest)
+    {
+      if (messageType == EpcX2Header::InitiatingMessage)
+        {
+          NS_LOG_LOGIC ("Recv X2 message: ON/OFF REQUEST");
+
+          EpcX2OnOffRequestHeader x2OnOffRequestHeader;
+          packet->RemoveHeader (x2OnOffRequestHeader);
+
+          EpcX2SapUser::OnOffRequestParams params;
+          params.sourceCellId = x2OnOffRequestHeader.GetSrcCellId ();
+          params.op = x2OnOffRequestHeader.GetOperation ();
+
+          m_x2SapUser->RecvOnOffRequest (params);
+        }
+    }
   else
     {
       NS_ASSERT_MSG (false, "ProcedureCode NOT SUPPORTED!!!");
@@ -940,6 +956,49 @@ EpcX2::DoSendUeData (EpcX2SapProvider::UeDataParams params)
 
   NS_LOG_INFO ("Forward UE DATA through X2 interface");
   sourceSocket->SendTo (packet, 0, InetSocketAddress (targetIpAddr, m_x2uUdpPort));
+}
+
+void
+EpcX2::DoSendOnOffRequest (EpcX2SapProvider::OnOffRequestParams params)
+{
+  NS_LOG_FUNCTION (this);
+
+  NS_LOG_LOGIC ("sourceCellId = " << params.sourceCellId);
+  NS_LOG_LOGIC ("targetCellId = " << params.targetCellId);
+
+  NS_ASSERT_MSG (m_x2InterfaceSockets.find (params.targetCellId) != m_x2InterfaceSockets.end (),
+                 "Missing infos for targetCellId = " << params.targetCellId);
+  Ptr<X2IfaceInfo> socketInfo = m_x2InterfaceSockets [params.targetCellId];
+  Ptr<Socket> sourceSocket = socketInfo->m_localCtrlPlaneSocket;
+  Ipv4Address targetIpAddr = socketInfo->m_remoteIpAddr;
+
+  NS_LOG_LOGIC ("sourceSocket = " << sourceSocket);
+  NS_LOG_LOGIC ("targetIpAddr = " << targetIpAddr);
+
+  NS_LOG_INFO ("Send X2 message: ON/OFF REQUEST");
+
+  // Build the X2 message
+  EpcX2OnOffRequestHeader x2OnOffRequestHeader;
+  x2OnOffRequestHeader.SetSrcCellId (params.sourceCellId);
+  x2OnOffRequestHeader.SetOperation (params.op);
+
+  EpcX2Header x2Header;
+  x2Header.SetMessageType (EpcX2Header::InitiatingMessage);
+  x2Header.SetProcedureCode (EpcX2Header::OnOffRequest);
+  x2Header.SetLengthOfIes (x2OnOffRequestHeader.GetLengthOfIes ());
+  x2Header.SetNumberOfIes (x2OnOffRequestHeader.GetNumberOfIes ());
+
+  NS_LOG_INFO ("X2 header: " << x2Header);
+  NS_LOG_INFO ("X2 OnOffRequest header: " << x2OnOffRequestHeader);
+
+  // Build the X2 packet
+  Ptr<Packet> packet = Create <Packet> ();
+  packet->AddHeader (x2OnOffRequestHeader);
+  packet->AddHeader (x2Header);
+  NS_LOG_INFO ("packetLen = " << packet->GetSize ());
+
+  // Send the X2 message through the socket
+  sourceSocket->SendTo (packet, 0, InetSocketAddress (targetIpAddr, m_x2cUdpPort));
 }
 
 } // namespace ns3

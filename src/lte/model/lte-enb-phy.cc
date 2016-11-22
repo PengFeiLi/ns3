@@ -1117,4 +1117,18 @@ LteEnbPhy::ReceiveLteUlHarqFeedback (UlInfoListElement_s mes)
   m_enbPhySapUser->UlInfoListElementHarqFeeback (mes);
 }
 
+void
+LteEnbPhy::DoTurnOn ()
+{
+  NS_LOG_INFO ("turn on small cell " << m_cellId);
+  m_txPower = m_maxTxPower;
+}
+
+void
+LteEnbPhy::DoTurnOff ()
+{
+  NS_LOG_INFO ("turn off small cell " << m_cellId);
+  m_txPower = -10000.0;
+}
+
 };

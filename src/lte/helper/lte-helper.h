@@ -738,20 +738,26 @@ private:
    */
   bool m_usePdschForCqiGeneration;
 
-public:
-    NetDeviceContainer InstallClusterEnbDevice (NodeContainer c, uint16_t numberOfClusters, uint16_t nodesPerCluster);
-    NetDeviceContainer InstallMacroEnbDevices (NodeContainer c);
-    NetDeviceContainer InstallSmallEnbDevices (NodeContainer c, uint32_t numberPerCluster);
-    void AttachDelay (Ptr<NetDevice> ueDevice);
-
-
 private:
+    ObjectFactory m_sleepAlgorithmFactory;
+
     Ptr<NetDevice> InstallBaseEnbDevice (Ptr<Node> n, uint16_t cellId);
     Ptr<NetDevice> InstallMacroEnbDevice (Ptr<Node> n, uint16_t cluster);
     Ptr<NetDevice> InstallSmallEnbDevice (Ptr<Node> n, uint16_t cluster, uint16_t inode);
 
     uint16_t GetMacroCellId (uint16_t cluster);
     uint16_t GetSmallCellId (uint16_t cluster, uint16_t inode);
+
+public:
+    NetDeviceContainer InstallClusterEnbDevice (NodeContainer c, uint16_t numberOfClusters, uint16_t nodesPerCluster);
+    NetDeviceContainer InstallMacroEnbDevices (NodeContainer c);
+    NetDeviceContainer InstallSmallEnbDevices (NodeContainer c, uint32_t numberPerCluster);
+    void AttachDelay (Ptr<NetDevice> ueDevice);
+    void RegisterSmallCells (NetDeviceContainer mcDevices, NetDeviceContainer scDevices, uint16_t scPerMc);
+
+    std::string GetSleepAlgorithmType () const;
+    void SetSleepAlgorithmType (std::string type);
+    void SetSleepAlgorithmAttribute (std::string n, const AttributeValue &v);
 
 }; // end of `class LteHelper`
 

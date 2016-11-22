@@ -139,6 +139,10 @@ LteUeNetDevice::DoDispose (void)
   m_phy = 0;
   m_nas->Dispose ();
   m_nas = 0;
+  m_smallPhy->Dispose ();
+  m_smallPhy = 0;
+  m_smallMac->Dispose ();
+  m_smallMac = 0;
   LteNetDevice::DoDispose ();
 }
 

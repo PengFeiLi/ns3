@@ -80,12 +80,12 @@ PicoPositions(NodeContainer c, uint32_t enbRadius, double enbYDis)
 }
 
 Ptr<ListPositionAllocator>
-UEPositions(NodeContainer c, Ptr<ListPositionAllocator> posallo, double enbYDis)
+UEPositions(NodeContainer c, Ptr<ListPositionAllocator> posallo, uint32_t numberOfRandUes)
 {
   Ptr<ListPositionAllocator> positionAlloc = posallo;//CreateObject<ListPositionAllocator> ();
   double offset_x=-100, offset_y=-100;
 
-  for (uint16_t i = 0; i < 8 ; i++)
+  for (uint16_t i = 0; i < numberOfRandUes; i++)
    {
     Vector pos = RandomUEPosition(100);
     positionAlloc->Add (Vector(pos.x + offset_x, pos.y + offset_y, pos.z));
@@ -112,10 +112,12 @@ main (int argc, char *argv[])
   double enbYDis = std::sqrt(enbInterDistance*enbInterDistance-enbRadius*enbRadius);
 
 
+  uint32_t numberOfRandUes = 8;
   // Command line arguments
   CommandLine cmd;
   cmd.AddValue("simTime", "Total duration of the simulation [s])", simTime);
   cmd.AddValue("interPacketInterval", "Inter packet interval [ms])", interPacketInterval);
+  cmd.AddValue("numberOfRandUes", "number of random UEs around the third small cell", numberOfRandUes);
   cmd.Parse(argc, argv);
 
   Ptr<LteHelper> lteHelper = CreateObject<LteHelper> ();
@@ -160,7 +162,7 @@ main (int argc, char *argv[])
 
   enbNodes.Create(macroEnbs);// * enbSectors);
   picoNodes.Create(numberOfNodes);
-  ueNodes.Create(numberOfNodes+9);//ue实际比pico多8+1个
+  ueNodes.Create(numberOfNodes+numberOfRandUes+1);//ue实际比pico多8+1个
 
   //set mobility of macro cells
   Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator> ();
@@ -175,7 +177,7 @@ main (int argc, char *argv[])
   Ptr<ListPositionAllocator> positionAllocatortem = PicoPositions(picoNodes, enbRadius, enbYDis);
   mobility.SetPositionAllocator (positionAllocatortem);
   mobility.Install (picoNodes);
-  mobility.SetPositionAllocator (UEPositions(picoNodes, positionAllocatortem, enbYDis));
+  mobility.SetPositionAllocator (UEPositions(picoNodes, positionAllocatortem, numberOfRandUes));
   mobility.Install (ueNodes);
 
   //Install macro cells
@@ -233,10 +235,6 @@ main (int argc, char *argv[])
   uint16_t otherPort = 3000;
   ApplicationContainer clientApps;
   ApplicationContainer serverApps;
-  remoteHostAddr.Print (std::cout);
-  std::cout << std::endl;
-  ueIpIface.GetAddress (0).Print (std::cout);
-  std::cout << std::endl;
   for (uint32_t u = 0; u < ueNodes.GetN (); ++u)
     {
       ++ulPort;

@@ -63,7 +63,8 @@ public:
     UeContextRelease        = 5,
     ResourceStatusReporting = 10,
     ConnectionRequest       = 12,
-    ConnectionCompleted     = 13
+    ConnectionCompleted     = 13,
+    OnOffRequest            = 14
   };
 
   enum TypeOfMessage_t {
@@ -428,6 +429,36 @@ private:
   uint32_t          m_headerLength;
 
   uint16_t          m_rnti;
+};
+
+class EpcX2OnOffRequestHeader : public Header
+{
+public:
+  EpcX2OnOffRequestHeader ();
+  virtual ~EpcX2OnOffRequestHeader ();
+
+  static TypeId GetTypeId (void);
+  virtual TypeId GetInstanceTypeId (void) const;
+  virtual uint32_t GetSerializedSize (void) const;
+  virtual void Serialize (Buffer::Iterator start) const;
+  virtual uint32_t Deserialize (Buffer::Iterator start);
+  virtual void Print (std::ostream &os) const;
+
+  void SetSrcCellId (uint16_t cellId);
+  uint16_t GetSrcCellId () const;
+
+  void SetOperation (bool op);
+  bool GetOperation () const;
+
+  uint32_t GetLengthOfIes () const;
+  uint32_t GetNumberOfIes () const;
+
+private:
+  uint32_t          m_numberOfIes;
+  uint32_t          m_headerLength;
+
+  uint16_t          m_srcCellId;
+  bool              m_op;
 };
 
 } // namespace ns3

@@ -245,10 +245,6 @@ main (int argc, char *argv[])
   uint16_t otherPort = 3000;
   ApplicationContainer clientApps;
   ApplicationContainer serverApps;
-  remoteHostAddr.Print (std::cout);
-  std::cout << std::endl;
-  ueIpIface.GetAddress (0).Print (std::cout);
-  std::cout << std::endl;
   for (uint32_t u = 0; u < ueNodes.GetN (); ++u)
     {
       ++ulPort;

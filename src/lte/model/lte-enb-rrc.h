@@ -40,6 +40,7 @@
 #include <ns3/lte-rrc-sap.h>
 #include <ns3/lte-anr-sap.h>
 #include <ns3/lte-ffr-rrc-sap.h>
+#include <ns3/lte-sleep-management-sap.h>
 
 #include <map>
 #include <set>
@@ -548,6 +549,7 @@ class LteEnbRrc : public Object
   friend class MemberEpcEnbS1SapUser<LteEnbRrc>;
   friend class EpcX2SpecificEpcX2SapUser<LteEnbRrc>;
   friend class UeManager;
+  friend class MemberLteSleepManagementSapUser<LteEnbRrc>;
 
 public:
   /**
@@ -1283,11 +1285,25 @@ private:
   TracedCallback<uint64_t, uint16_t, uint16_t, LteRrcSap::MeasurementReport> m_recvMeasurementReportTrace;
 
 private:
-  bool isMacroCell (uint16_t cellId) { return !(cellId & 0x003F); }
+  bool m_enableSleepMode;
+
+  bool isMacroCell () { return !(m_cellId & 0x003F); }
+  bool isSmallCell () { return !isMacroCell(); }
+
+public:
+  uint16_t GetCellId () const { return m_cellId; }
 
 /************ only available on the macro cell side ************/
 private:
+  std::set<uint16_t> m_smallCells;
+
   std::map<uint16_t, uint16_t> m_uePerSmallCell;
+
+  std::set<uint16_t> m_onCells;
+  std::set<uint16_t> m_offCells;
+
+  LteSleepManagementSapUser* m_sleepManagementSapUser;
+  LteSleepManagementSapProvider* m_sleepManagementSapProvider;
 
   uint16_t GetUeOnSmallCell (uint16_t cellId);
   void IncUeOnSmallCell (uint16_t cellId);
@@ -1298,10 +1314,30 @@ private:
 
   void DoRecvRrcd (EpcX2SapUser::RrConfigParams params);
 
+  void DoTurnOnAllCells ();
+  void DoTurnOffAllCells ();
+  void DoTurnOnCell (uint16_t cellId);
+  void DoTurnOffCell (uint16_t cellId);
+  void DoOnOffRequest (uint16_t cellId, bool op);
+
+  void DoCollectSleepInformation ();
+  void DoSleepTrigger (LteRrcSap::SleepPolicy sleepPolicy);
+
+public:
+  void RegisterSmallCell (uint16_t cellId);
+
+  void SetLteSleepManagementSapProvider (LteSleepManagementSapProvider* p);
+  LteSleepManagementSapUser* GetLteSleepManagementSapUser ();
+
 /**************** only availabe on the small cell side *****************/
 private:
+  bool m_isSleeping;
+  void DoTurnOn ();
+  void DoTurnOff ();
+
   void DoRecvMacroConnectionRequest (EpcX2SapUser::ConnectionRequestParams params);
   void DoRecvSmallConnCompleted (EpcX2SapUser::SmallConnCompletedParams params);
+  void DoRecvOnOffRequest (EpcX2SapUser::OnOffRequestParams params);
 
 }; // end of `class LteEnbRrc`
 

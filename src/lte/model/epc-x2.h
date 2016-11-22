@@ -138,6 +138,7 @@ protected:
   virtual void DoSendConnectionRequest (EpcX2SapProvider::ConnectionRequestParams params);
   virtual void DoSendRrConfig (EpcX2SapProvider::RrConfigParams params);
   virtual void DoSendUeData (EpcX2SapProvider::UeDataParams params);
+  virtual void DoSendOnOffRequest (EpcX2SapProvider::OnOffRequestParams params);
 
   EpcX2SapUser* m_x2SapUser;
   EpcX2SapProvider* m_x2SapProvider;

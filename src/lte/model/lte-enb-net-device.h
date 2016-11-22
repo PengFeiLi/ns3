@@ -43,6 +43,7 @@ class FfMacScheduler;
 class LteHandoverAlgorithm;
 class LteAnr;
 class LteFfrAlgorithm;
+class LteSleepAlgorithm;
 
 /**
  * \ingroup lte
@@ -201,6 +202,8 @@ private:
   Ptr<LteAnr> m_anr;
 
   Ptr<LteFfrAlgorithm> m_ffrAlgorithm;
+
+  Ptr<LteSleepAlgorithm> m_sleepAlgorithm;
 
   uint16_t m_cellId; /**< Cell Identifer. Part of the CGI, see TS 29.274, section 8.21.1  */
 

@@ -61,6 +61,7 @@
 #include <ns3/buildings-propagation-loss-model.h>
 #include <ns3/lte-spectrum-value-helper.h>
 #include <ns3/epc-x2.h>
+#include <ns3/lte-sleep-algorithm.h>
 
 namespace ns3 {
 
@@ -201,6 +202,14 @@ TypeId LteHelper::GetTypeId (void)
                    BooleanValue (true),
                    MakeBooleanAccessor (&LteHelper::m_usePdschForCqiGeneration),
                    MakeBooleanChecker ())
+    .AddAttribute ("SleepAlgorithm",
+                   "The type of sleep algorithm to be used for macro eNBs. "
+                   "The allowed values for this attributes are the type names "
+                   "of any class inheriting from ns3::LteSleepAlgorithm.",
+                   StringValue ("ns3::NoOpSleepAlgorithm"),
+                   MakeStringAccessor (&LteHelper::SetSleepAlgorithmType,
+                                       &LteHelper::GetSleepAlgorithmType),
+                   MakeStringChecker ())
   ;
   return tid;
 }
@@ -454,6 +463,7 @@ LteHelper::InstallSingleEnbDevice (Ptr<Node> n)
   Ptr<FfMacScheduler> sched = m_schedulerFactory.Create<FfMacScheduler> ();
   Ptr<LteFfrAlgorithm> ffrAlgorithm = m_ffrAlgorithmFactory.Create<LteFfrAlgorithm> ();
   Ptr<LteHandoverAlgorithm> handoverAlgorithm = m_handoverAlgorithmFactory.Create<LteHandoverAlgorithm> ();
+  Ptr<LteSleepAlgorithm> sleepAlgorithm = m_sleepAlgorithmFactory.Create<LteSleepAlgorithm> ();
   Ptr<LteEnbRrc> rrc = CreateObject<LteEnbRrc> ();
 
   if (m_useIdealRrc)
@@ -510,6 +520,9 @@ LteHelper::InstallSingleEnbDevice (Ptr<Node> n)
   rrc->SetLteFfrRrcSapProvider (ffrAlgorithm->GetLteFfrRrcSapProvider ());
   ffrAlgorithm->SetLteFfrRrcSapUser (rrc->GetLteFfrRrcSapUser ());
   //FFR SAP END
+  
+  rrc->SetLteSleepManagementSapProvider (sleepAlgorithm->GetLteSleepManagementSapProvider ());
+  sleepAlgorithm->SetLteSleepManagementSapUser (rrc->GetLteSleepManagementSapUser ());
 
   Ptr<LteEnbNetDevice> dev = m_enbNetDeviceFactory.Create<LteEnbNetDevice> ();
   dev->SetNode (n);
@@ -520,6 +533,7 @@ LteHelper::InstallSingleEnbDevice (Ptr<Node> n)
   dev->SetAttribute ("LteEnbRrc", PointerValue (rrc)); 
   dev->SetAttribute ("LteHandoverAlgorithm", PointerValue (handoverAlgorithm));
   dev->SetAttribute ("LteFfrAlgorithm", PointerValue (ffrAlgorithm));
+  dev->SetAttribute ("LteSleepAlgorithm", PointerValue (sleepAlgorithm));
 
   if (m_isAnrEnabled)
     {
@@ -1406,7 +1420,7 @@ LteHelper::InstallMacroEnbDevice (Ptr<Node> n, uint16_t cluster)
 NetDeviceContainer
 LteHelper::InstallSmallEnbDevices (NodeContainer c, uint32_t numberPerCluster)
 {
-  SetFfrAlgorithmType ("ns3::LteFrHardAlgorithm");
+  // SetFfrAlgorithmType ("ns3::LteFrHardAlgorithm");
   NetDeviceContainer devices;
   Ptr<NetDevice> device;
   NodeContainer::Iterator it;
@@ -1419,7 +1433,7 @@ LteHelper::InstallSmallEnbDevices (NodeContainer c, uint32_t numberPerCluster)
     {
       for (i=1; i<=numberPerCluster && it != c.End (); ++it, ++i)
         {
-          SetFfrAlgorithmAttribute ("FrCellTypeId", UintegerValue ((i-1)%3));
+          // SetFfrAlgorithmAttribute ("FrCellTypeId", UintegerValue ((i-1)%3));
           device = InstallSmallEnbDevice (*it, cluster, i);
           devices.Add (device);
         }
@@ -1478,6 +1492,7 @@ LteHelper::InstallBaseEnbDevice (Ptr<Node> n, uint16_t cellId)
   Ptr<FfMacScheduler> sched = m_schedulerFactory.Create<FfMacScheduler> ();
   Ptr<LteFfrAlgorithm> ffrAlgorithm = m_ffrAlgorithmFactory.Create<LteFfrAlgorithm> ();
   Ptr<LteHandoverAlgorithm> handoverAlgorithm = m_handoverAlgorithmFactory.Create<LteHandoverAlgorithm> ();
+  Ptr<LteSleepAlgorithm> sleepAlgorithm = m_sleepAlgorithmFactory.Create<LteSleepAlgorithm> ();
   Ptr<LteEnbRrc> rrc = CreateObject<LteEnbRrc> ();
 
   if (m_useIdealRrc)
@@ -1535,6 +1550,9 @@ LteHelper::InstallBaseEnbDevice (Ptr<Node> n, uint16_t cellId)
   ffrAlgorithm->SetLteFfrRrcSapUser (rrc->GetLteFfrRrcSapUser ());
   //FFR SAP END
 
+  rrc->SetLteSleepManagementSapProvider (sleepAlgorithm->GetLteSleepManagementSapProvider ());
+  sleepAlgorithm->SetLteSleepManagementSapUser (rrc->GetLteSleepManagementSapUser ());
+
   Ptr<LteEnbNetDevice> dev = m_enbNetDeviceFactory.Create<LteEnbNetDevice> ();
   dev->SetNode (n);
   dev->SetAttribute ("CellId", UintegerValue (cellId)); 
@@ -1544,6 +1562,7 @@ LteHelper::InstallBaseEnbDevice (Ptr<Node> n, uint16_t cellId)
   dev->SetAttribute ("LteEnbRrc", PointerValue (rrc)); 
   dev->SetAttribute ("LteHandoverAlgorithm", PointerValue (handoverAlgorithm));
   dev->SetAttribute ("LteFfrAlgorithm", PointerValue (ffrAlgorithm));
+    dev->SetAttribute ("LteSleepAlgorithm", PointerValue (sleepAlgorithm));
 
   if (m_isAnrEnabled)
     {
@@ -1624,6 +1643,45 @@ void
 LteHelper::AttachDelay (Ptr<NetDevice> ueDevice)
 {
   Attach (ueDevice);
+}
+
+void
+LteHelper::RegisterSmallCells (NetDeviceContainer mcDevices, NetDeviceContainer scDevices, uint16_t scPerMc)
+{
+  NetDeviceContainer::Iterator mcIt = mcDevices.Begin ();
+  NetDeviceContainer::Iterator scIt = scDevices.Begin ();
+  while (mcIt != mcDevices.End ())
+  {
+    Ptr<LteEnbRrc> mcRrc = DynamicCast<LteEnbNetDevice> (*mcIt)->GetRrc ();
+    for (int i=0; i<scPerMc; ++i, ++scIt)
+    {
+      uint16_t cellId = DynamicCast<LteEnbNetDevice> (*scIt)->GetCellId ();
+      mcRrc->RegisterSmallCell (cellId);
+    }
+    ++mcIt;
+  }
+}
+
+
+std::string
+LteHelper::GetSleepAlgorithmType () const
+{
+  return m_sleepAlgorithmFactory.GetTypeId ().GetName ();
+}
+
+void
+LteHelper::SetSleepAlgorithmType (std::string type)
+{
+  NS_LOG_FUNCTION (this << type);
+  m_sleepAlgorithmFactory = ObjectFactory ();
+  m_sleepAlgorithmFactory.SetTypeId (type);
+}
+
+void
+LteHelper::SetSleepAlgorithmAttribute (std::string n, const AttributeValue &v)
+{
+  NS_LOG_FUNCTION (this << n);
+  m_sleepAlgorithmFactory.Set (n, v);
 }
 
 } // namespace ns3

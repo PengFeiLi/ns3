@@ -1944,4 +1944,107 @@ EpcX2SmallConnCompletedHeader::GetNumberOfIes () const
   return m_numberOfIes;
 }
 
+//////////////////////////////////////////////////////////////////
+
+NS_OBJECT_ENSURE_REGISTERED (EpcX2OnOffRequestHeader);
+
+EpcX2OnOffRequestHeader::EpcX2OnOffRequestHeader ()
+  : m_numberOfIes (1 + 1),
+    m_headerLength (2 + 1)
+{
+}
+
+EpcX2OnOffRequestHeader::~EpcX2OnOffRequestHeader ()
+{
+  m_numberOfIes = 0;
+  m_headerLength = 0;
+}
+
+TypeId
+EpcX2OnOffRequestHeader::GetTypeId (void)
+{
+  static TypeId tid = TypeId ("ns3::EpcX2OnOffRequestHeader")
+    .SetParent<Header> ()
+    .SetGroupName ("Lte")
+    .AddConstructor<EpcX2OnOffRequestHeader> ()
+  ;
+  return tid;
+}
+
+TypeId
+EpcX2OnOffRequestHeader::GetInstanceTypeId (void) const
+{
+  return GetTypeId ();
+}
+
+uint32_t
+EpcX2OnOffRequestHeader::GetSerializedSize (void) const
+{
+  return m_headerLength;
+}
+
+void
+EpcX2OnOffRequestHeader::Serialize (Buffer::Iterator start) const
+{
+  Buffer::Iterator i = start;
+
+  i.WriteHtonU16 (m_srcCellId);
+  i.WriteU8 ((uint8_t)m_op);
+}
+
+uint32_t
+EpcX2OnOffRequestHeader::Deserialize (Buffer::Iterator start)
+{
+  Buffer::Iterator i = start;
+
+  m_srcCellId = i.ReadNtohU16 ();
+  m_op = (bool)i.ReadU8 ();
+  m_numberOfIes = 2;
+  m_headerLength = 3;
+
+  return GetSerializedSize ();
+}
+
+void
+EpcX2OnOffRequestHeader::Print (std::ostream &os) const
+{
+  os << " Operation = " << (m_op ? "On" : "Off");
+}
+
+void
+EpcX2OnOffRequestHeader::SetSrcCellId (uint16_t cellId)
+{
+  m_srcCellId = cellId;
+}
+
+uint16_t
+EpcX2OnOffRequestHeader::GetSrcCellId () const
+{
+  return m_srcCellId;
+}
+
+void
+EpcX2OnOffRequestHeader::SetOperation (bool op)
+{
+  m_op = op;
+}
+
+bool
+EpcX2OnOffRequestHeader::GetOperation () const
+{
+  return m_op;
+}
+
+uint32_t
+EpcX2OnOffRequestHeader::GetLengthOfIes () const
+{
+  return m_headerLength;
+}
+
+uint32_t
+EpcX2OnOffRequestHeader::GetNumberOfIes () const
+{
+  return m_numberOfIes;
+}
+
 } // namespace ns3

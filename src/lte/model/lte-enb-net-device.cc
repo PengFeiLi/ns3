@@ -41,6 +41,7 @@
 #include <ns3/lte-handover-algorithm.h>
 #include <ns3/lte-anr.h>
 #include <ns3/lte-ffr-algorithm.h>
+#include <ns3/lte-sleep-algorithm.h>
 #include <ns3/ipv4-l3-protocol.h>
 #include <ns3/abort.h>
 #include <ns3/log.h>
@@ -136,6 +137,11 @@ TypeId LteEnbNetDevice::GetTypeId (void)
                    MakeBooleanAccessor (&LteEnbNetDevice::SetCsgIndication,
                                         &LteEnbNetDevice::GetCsgIndication),
                    MakeBooleanChecker ())
+    .AddAttribute ("LteSleepAlgorithm",
+                   "The sleep algorithm associated to this EnbNetDevice",
+                   PointerValue (),
+                   MakePointerAccessor (&LteEnbNetDevice::m_sleepAlgorithm),
+                   MakePointerChecker <LteSleepAlgorithm> ())
   ;
   return tid;
 }
@@ -178,6 +184,9 @@ LteEnbNetDevice::DoDispose ()
 
   m_ffrAlgorithm->Dispose ();
   m_ffrAlgorithm = 0;
+
+  m_sleepAlgorithm->Dispose ();
+  m_sleepAlgorithm = 0;
 
   m_phy->Dispose ();
   m_phy = 0;
@@ -337,6 +346,7 @@ LteEnbNetDevice::DoInitialize (void)
     }
 
   m_ffrAlgorithm->Initialize ();
+  m_sleepAlgorithm->Initialize ();
 }
 
 

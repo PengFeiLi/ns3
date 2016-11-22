@@ -39,7 +39,7 @@ using namespace ns3;
  * It also  starts yet another flow between each UE pair.
  */
 
-NS_LOG_COMPONENT_DEFINE ("EpcFirstExample");
+NS_LOG_COMPONENT_DEFINE ("LenaSimpleEpcEnergy");
 
 Vector
 RandomPicoPosition(uint32_t enbRadius)
@@ -89,51 +89,13 @@ Ptr<ListPositionAllocator>
 PicoPositions(NodeContainer c, uint32_t enbRadius, double enbYDis)
 {
   Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator> ();
-  double offset_x,offset_y;
+  double offset_x=0, offset_y=0;
 
-  for (uint16_t i = 0; i < (c.GetN()-4); i++)//先把前六宏站内的微站部署好
+  for (uint16_t i = 0; i < c.GetN(); i++)//先把前六宏站内的微站部署好
   {
-    switch(i/4)
-    {
-    case 0:
-      offset_x = -250;
-      offset_y = -enbYDis;
-      break;
-    case 1:
-      offset_x = 250;
-      offset_y = -enbYDis;
-      break;
-    case 2:
-      offset_x = -500;
-      offset_y = 0;
-      break;
-    case 3:
-      offset_x = 0;
-      offset_y = 0;
-      break;
-    case 4:
-      offset_x = 500;
-      offset_y = 0;
-      break;
-    case 5:
-      offset_x = -250;
-      offset_y = enbYDis;
-      break;
-    case 6:
-      offset_x = 250;
-      offset_y = enbYDis;
-      break;
-    }
     Vector pos = RandomPicoPosition(enbRadius);
     positionAlloc->Add (Vector(pos.x + offset_x, pos.y + offset_y, pos.z));
   }
-    //再配置最后四个微站位置,左上为第一个，右下为最后一个
-  offset_x = 250;
-  offset_y = enbYDis;
-  positionAlloc->Add (Vector(-100.0 + offset_x, 100.0 + offset_y, 0.0));
-  positionAlloc->Add (Vector(100.0 + offset_x, 100.0 + offset_y, 0.0));
-  positionAlloc->Add (Vector(-100.0 + offset_x, -100.0 + offset_y, 0.0));
-  positionAlloc->Add (Vector(100.0 + offset_x, -100.0 + offset_y, 0.0));
 
 //  std::cout << "weizhi:" << positionAlloc << std::endl;
   return positionAlloc;
@@ -143,16 +105,6 @@ Ptr<ListPositionAllocator>
 UEPositions(NodeContainer c, Ptr<ListPositionAllocator> posallo, double enbYDis)
 {
   Ptr<ListPositionAllocator> positionAlloc = posallo;//CreateObject<ListPositionAllocator> ();
-  double offset_x,offset_y;
-
-  for (uint16_t i = (c.GetN() - 9); i < (c.GetN() - 1) ; i++)
-   {
-    offset_x = 250 - 100;
-    offset_y = enbYDis - 100;
-    Vector pos = RandomUEPosition(100);
-    positionAlloc->Add (Vector(pos.x + offset_x, pos.y + offset_y, pos.z));
-   }
-  positionAlloc->Add (Vector(-20 + 250, -100 + enbYDis, 0));
 
 //  std::cout << "weizhi:" << positionAlloc << std::endl;
   return positionAlloc;
@@ -166,7 +118,7 @@ main (int argc, char *argv[])
   double simTime = 1.1;
   double interPacketInterval = 100;
 
-  uint32_t macroEnbs = 7;
+  uint32_t macroEnbs = 1;
   uint32_t picoEnbs = macroEnbs * 4;
   uint32_t numberOfNodes = picoEnbs;
   uint32_t enbInterDistance = 500;
@@ -222,46 +174,12 @@ main (int argc, char *argv[])
 
   enbNodes.Create(macroEnbs);// * enbSectors);
   picoNodes.Create(numberOfNodes);
-  ueNodes.Create(numberOfNodes+9);//ue实际比pico多8+1个
+  ueNodes.Create(numberOfNodes);
 
   //set mobility of macro cells
   Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator> ();
-  double offset_x,offset_y;
-  for (uint16_t i = 0; i < macroEnbs; i++)
-    {
-         switch(i)
-          {
-          case 0:
-            offset_x = -250;
-            offset_y = -enbYDis;
-            break;
-          case 1:
-            offset_x = 250;
-            offset_y = -enbYDis;
-            break;
-          case 2:
-            offset_x = -500;
-            offset_y = 0;
-            break;
-          case 3:
-            offset_x = 0;
-            offset_y = 0;
-            break;
-          case 4:
-            offset_x = 500;
-            offset_y = 0;
-            break;
-          case 5:
-            offset_x = -250;
-            offset_y = enbYDis;
-            break;
-          case 6:
-            offset_x = 250;
-            offset_y = enbYDis;
-            break;
-          }
-          positionAlloc->Add (Vector( offset_x,  offset_y, 0));
-      }
+  positionAlloc->Add (Vector( 0, 0, 0));
+
   MobilityHelper mobility;
   mobility.SetMobilityModel("ns3::ConstantPositionMobilityModel");
   mobility.SetPositionAllocator(positionAlloc);
@@ -296,6 +214,7 @@ main (int argc, char *argv[])
   //Install ues
   NetDeviceContainer ueLteDevs = lteHelper->InstallUeDevice (ueNodes);
 
+  lteHelper->RegisterSmallCells (enbLteDevs, picoLteDevs, 4);
   lteHelper->AddX2Interface (NodeContainer(enbNodes, picoNodes));
 
   // Install the IP stack on the UEs
@@ -318,10 +237,8 @@ main (int argc, char *argv[])
 //        // side effect: the default EPS bearer will be activated
 //      }
   uint32_t ueIndex;
-  for (ueIndex=0; ueIndex < ueLteDevs.GetN ()-1; ++ueIndex)
+  for (ueIndex=0; ueIndex < ueLteDevs.GetN (); ++ueIndex)
     lteHelper->Attach (ueLteDevs.Get (ueIndex));
-
-  Simulator::Schedule (MilliSeconds (600), &LteHelper::AttachDelay, lteHelper, ueLteDevs.Get (ueIndex));
 
   // Install and start applications on UEs and remote host
   uint16_t dlPort = 1234;

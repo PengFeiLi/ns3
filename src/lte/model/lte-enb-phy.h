@@ -436,6 +436,12 @@ private:
    */
   TracedCallback<PhyTransmissionStatParameters> m_dlPhyTransmission;
 
+private:
+  double m_maxTxPower;
+
+  void DoTurnOn ();
+  void DoTurnOff ();
+
 }; // end of `class LteEnbPhy`
 
 

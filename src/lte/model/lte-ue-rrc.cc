@@ -1057,6 +1057,8 @@ LteUeRrc::SynchronizeToStrongestCell ()
        * This block attempts to find a cell with strongest RSRP and has not
        * yet been identified as "acceptable cell".
        */
+      if (!isMacroCell (it->first))
+        continue;
       if (maxRsrp < it->second.rsrp)
         {
           std::set<uint16_t>::const_iterator itCell;

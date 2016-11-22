@@ -1117,9 +1117,8 @@ UeManager::DoRecvSmallCellSearchMeasurements (LteRrcSap::MeasResults measResults
 
   NS_LOG_INFO ("Macro Cell " << m_rrc->m_cellId << " receive SmallCellMeas_Srb1 from UE " << m_imsi);
 
-  uint16_t maxCellId = 0, resCellId;
+  uint16_t maxCellId;
   double maxRsrp = -std::numeric_limits<double>::infinity ();
-  uint16_t minCount = 0;
   std::list<LteRrcSap::MeasResultEutra>::iterator mreIt;
 
   for (mreIt = measResults.measResultListEutra.begin ();
@@ -1135,21 +1134,9 @@ UeManager::DoRecvSmallCellSearchMeasurements (LteRrcSap::MeasResults measResults
       }
     }
 
-  minCount = m_rrc->GetUeOnSmallCell (maxCellId);
-  resCellId = maxCellId;
-  // for (mreIt = measResults.measResultListEutra.begin ();
-  //     mreIt != measResults.measResultListEutra.end (); ++mreIt)
-  //   {
-  //     if (maxRsrp - mreIt->rsrpResult < 5 && m_rrc->GetUeOnSmallCell (mreIt->physCellId) < minCount)
-  //       {
-  //         resCellId = mreIt->physCellId;
-  //         minCount = m_rrc->GetUeOnSmallCell (resCellId);
-  //       }
-  //   }
-
-  NS_LOG_INFO ( "small cell synchronization decision, IMSI " << m_imsi << " RNTI " << m_rnti << " small cellId " << resCellId);
+  NS_LOG_INFO ( "small cell synchronization decision, IMSI " << m_imsi << " RNTI " << m_rnti << " small cellId " << maxCellId);
   LteRrcSap::CellIdMsg msg;
-  msg.cellId = resCellId;
+  msg.cellId = maxCellId;
   NS_LOG_INFO ("Macro Cell " << m_rrc->m_cellId << " send SmallCellSync_Srb1 to UE " << m_imsi);
   m_rrc->m_rrcSapUser->SendSyncSmallCellId (m_rnti, msg);
 }
@@ -1536,7 +1523,9 @@ LteEnbRrc::LteEnbRrc ()
     m_lastAllocatedRnti (0),
     m_srsCurrentPeriodicityId (0),
     m_lastAllocatedConfigurationIndex (0),
-    m_reconfigureUes (false)
+    m_reconfigureUes (false),
+    m_sleepManagementSapProvider (0),
+    m_isSleeping (false)
 {
   NS_LOG_FUNCTION (this);
   m_cmacSapUser = new EnbRrcMemberLteEnbCmacSapUser (this);
@@ -1547,6 +1536,7 @@ LteEnbRrc::LteEnbRrc ()
   m_x2SapUser = new EpcX2SpecificEpcX2SapUser<LteEnbRrc> (this);
   m_s1SapUser = new MemberEpcEnbS1SapUser<LteEnbRrc> (this);
   m_cphySapUser = new MemberLteEnbCphySapUser<LteEnbRrc> (this);
+  m_sleepManagementSapUser = new MemberLteSleepManagementSapUser<LteEnbRrc> (this);
 }
 
 
@@ -1569,6 +1559,7 @@ LteEnbRrc::DoDispose ()
   delete m_x2SapUser;
   delete m_s1SapUser;
   delete m_cphySapUser;
+  delete m_sleepManagementSapUser;
 }
 
 TypeId
@@ -2033,7 +2024,7 @@ LteEnbRrc::SendData (Ptr<Packet> packet)
 {
   NS_LOG_FUNCTION (this << packet);
 
-  if (isMacroCell (m_cellId))
+  if (isMacroCell ())
   {
     NS_LOG_WARN ("macro cell can not send data");
     return true;
@@ -2826,6 +2817,126 @@ LteEnbRrc::DecUeOnSmallCell (uint16_t cellId)
       if (it->second == 0)
           m_uePerSmallCell.erase (it);
     }
+}
+
+void
+LteEnbRrc::DoTurnOnAllCells ()
+{
+  NS_LOG_FUNCTION (this);
+  std::set<uint16_t>::iterator it = m_offCells.begin ();
+  while (it != m_offCells.end ())
+  {
+    DoOnOffRequest (*it, true);
+    m_onCells.insert (*it);
+  }
+  m_offCells.clear ();
+}
+
+void
+LteEnbRrc::DoTurnOffAllCells ()
+{
+  NS_LOG_FUNCTION (this);
+  std::set<uint16_t>::iterator it = m_onCells.begin ();
+  while (it != m_onCells.end ())
+  {
+    DoOnOffRequest (*it, false);
+    m_offCells.insert (*it);
+  }
+  m_onCells.clear ();
+}
+
+void
+LteEnbRrc::DoTurnOnCell (uint16_t cellId)
+{
+  NS_LOG_INFO ("turn on small cell " << cellId);
+  if (m_offCells.count (cellId))
+  {
+    DoOnOffRequest (cellId, true);
+    m_offCells.erase (cellId);
+    m_onCells.insert (cellId);
+  }
+}
+
+void
+LteEnbRrc::DoTurnOffCell (uint16_t cellId)
+{
+  NS_LOG_INFO ("turn off small cell " << cellId);
+  if (m_onCells.count (cellId))
+  {
+    DoOnOffRequest (cellId, false);
+    m_onCells.erase (cellId);
+    m_offCells.insert (cellId);
+  }
+}
+
+void
+LteEnbRrc::DoOnOffRequest (uint16_t cellId, bool op)
+{
+  EpcX2Sap::OnOffRequestParams params;
+  params.sourceCellId = m_cellId;
+  params.targetCellId = cellId;
+  params.op = op;
+  m_x2SapProvider->SendOnOffRequest (params);
+}
+
+void
+LteEnbRrc::DoRecvOnOffRequest (EpcX2SapUser::OnOffRequestParams params)
+{
+  NS_LOG_FUNCTION (this);
+
+  if(params.op)
+    DoTurnOn ();
+  else
+    DoTurnOff ();
+}
+
+void
+LteEnbRrc::DoTurnOn ()
+{
+  NS_LOG_INFO ("small cell " << m_cellId << " is on");
+  m_isSleeping = false;
+  m_cphySapProvider->TurnOn ();
+}
+
+void
+LteEnbRrc::DoTurnOff ()
+{
+  NS_LOG_INFO ("small cell " << m_cellId << " is off");
+  m_isSleeping = true;
+  m_cphySapProvider->TurnOff ();
+}
+
+void
+LteEnbRrc::RegisterSmallCell (uint16_t cellId)
+{
+  NS_LOG_INFO ("macro cell " << m_cellId << " register small cell " << cellId);
+  m_smallCells.insert (cellId);
+}
+
+void
+LteEnbRrc::SetLteSleepManagementSapProvider (LteSleepManagementSapProvider* p)
+{
+  NS_LOG_FUNCTION (this);
+  m_sleepManagementSapProvider = p;
+}
+
+LteSleepManagementSapUser*
+LteEnbRrc::GetLteSleepManagementSapUser ()
+{
+  NS_LOG_FUNCTION (this);
+  return m_sleepManagementSapUser;
+}
+
+void
+LteEnbRrc::DoCollectSleepInformation ()
+{
+  NS_LOG_FUNCTION (this);
+}
+
+void
+LteEnbRrc::DoSleepTrigger (LteRrcSap::SleepPolicy sleepPolicy)
+{
+  NS_LOG_FUNCTION (this);
 }
 
 } // namespace ns3

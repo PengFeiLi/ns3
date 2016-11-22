@@ -354,6 +354,13 @@ public:
     Ptr<Packet> ueData;
   };
 
+  struct OnOffRequestParams
+  {
+    uint16_t    sourceCellId;
+    uint16_t    targetCellId;
+    bool        op;
+  };
+
 };
 
 
@@ -391,6 +398,8 @@ public:
   virtual void SendRrConfig (RrConfigParams params) = 0;
 
   virtual void SendUeData (UeDataParams params) = 0;
+
+  virtual void SendOnOffRequest (OnOffRequestParams params) = 0;
 };
 
 
@@ -428,6 +437,8 @@ public:
   virtual void RecvRrcd (RrConfigParams params) = 0;
 
   virtual void RecvUeData (UeDataParams params) = 0;
+
+  virtual void RecvOnOffRequest (OnOffRequestParams params) = 0;
 };
 
 ///////////////////////////////////////
@@ -463,6 +474,8 @@ public:
   virtual void SendRrConfig (RrConfigParams params);
 
   virtual void SendUeData (UeDataParams params);
+
+  virtual void SendOnOffRequest (OnOffRequestParams params);
 
 private:
   EpcX2SpecificEpcX2SapProvider ();
@@ -557,6 +570,13 @@ EpcX2SpecificEpcX2SapProvider<C>::SendUeData (UeDataParams params)
   m_x2->DoSendUeData (params);
 }
 
+template <class C>
+void
+EpcX2SpecificEpcX2SapProvider<C>::SendOnOffRequest (OnOffRequestParams params)
+{
+  m_x2->DoSendOnOffRequest (params);
+}
+
 ///////////////////////////////////////
 
 template <class C>
@@ -590,6 +610,8 @@ public:
   virtual void RecvRrcd (RrConfigParams params);
 
   virtual void RecvUeData (UeDataParams params);
+
+  virtual void RecvOnOffRequest (OnOffRequestParams params);
 
 private:
   EpcX2SpecificEpcX2SapUser ();
@@ -682,6 +704,13 @@ void
 EpcX2SpecificEpcX2SapUser<C>::RecvUeData (UeDataParams params)
 {
   m_rrc->DoRecvUeData (params);
+}
+
+template <class C>
+void
+EpcX2SpecificEpcX2SapUser<C>::RecvOnOffRequest (OnOffRequestParams params)
+{
+  m_rrc->DoRecvOnOffRequest (params);
 }
 
 } // namespace ns3

@@ -116,6 +116,9 @@ public:
    * \return Reference Signal Power for SIB2
    */
   virtual int8_t GetReferenceSignalPower () = 0;
+
+  virtual void TurnOn () = 0;
+  virtual void TurnOff () = 0;
 };
 
 
@@ -160,7 +163,9 @@ public:
   virtual void SetMasterInformationBlock (LteRrcSap::MasterInformationBlock mib);
   virtual void SetSystemInformationBlockType1 (LteRrcSap::SystemInformationBlockType1 sib1);
   virtual int8_t GetReferenceSignalPower ();
-  
+  virtual void TurnOn () { m_owner->DoTurnOn(); }
+  virtual void TurnOff () { m_owner->DoTurnOff();}
+
 private:
   MemberLteEnbCphySapProvider ();
   C* m_owner;
