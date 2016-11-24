@@ -19,32 +19,34 @@
  *
  */
 
-#include "no-op-sleep-algorithm.h"
+#include "swes-sleep-algorithm.h"
 #include <ns3/log.h>
 
 namespace ns3 {
 
-NS_LOG_COMPONENT_DEFINE ("NoOpSleepAlgorithm");
+NS_LOG_COMPONENT_DEFINE ("SwesSleepAlgorithm");
 
-NS_OBJECT_ENSURE_REGISTERED (NoOpSleepAlgorithm);
+NS_OBJECT_ENSURE_REGISTERED (SwesSleepAlgorithm);
 
 
-NoOpSleepAlgorithm::NoOpSleepAlgorithm ()
-    : m_sleepManagementSapUser (0)
+SwesSleepAlgorithm::SwesSleepAlgorithm ()
+    : m_sleepManagementSapUser (0),
+      m_threshold (0),
+      m_measId (0)
 {
     NS_LOG_FUNCTION (this);
-    m_sleepManagementSapProvider = new MemberLteSleepManagementSapProvider<NoOpSleepAlgorithm> (this);
+    m_sleepManagementSapProvider = new MemberLteSleepManagementSapProvider<SwesSleepAlgorithm> (this);
 }
 
 
-NoOpSleepAlgorithm::~NoOpSleepAlgorithm ()
+SwesSleepAlgorithm::~SwesSleepAlgorithm ()
 {
     NS_LOG_FUNCTION (this);
 }
 
 
 void
-NoOpSleepAlgorithm::DoDispose ()
+SwesSleepAlgorithm::DoDispose ()
 {
     NS_LOG_FUNCTION (this);
     delete m_sleepManagementSapProvider;
@@ -52,19 +54,19 @@ NoOpSleepAlgorithm::DoDispose ()
 
 
 TypeId
-NoOpSleepAlgorithm::GetTypeId ()
+SwesSleepAlgorithm::GetTypeId ()
 {
-    static TypeId tid = TypeId ("ns3::NoOpSleepAlgorithm")
+    static TypeId tid = TypeId ("ns3::SwesSleepAlgorithm")
         .SetParent<LteSleepAlgorithm> ()
         .SetGroupName ("Lte")
-        .AddConstructor<NoOpSleepAlgorithm> ()
+        .AddConstructor<SwesSleepAlgorithm> ()
     ;
     return tid;
 }
 
 
 void
-NoOpSleepAlgorithm::SetLteSleepManagementSapUser (LteSleepManagementSapUser* s)
+SwesSleepAlgorithm::SetLteSleepManagementSapUser (LteSleepManagementSapUser* s)
 {
     NS_LOG_FUNCTION (this << s);
     m_sleepManagementSapUser = s;
@@ -72,7 +74,7 @@ NoOpSleepAlgorithm::SetLteSleepManagementSapUser (LteSleepManagementSapUser* s)
 
 
 LteSleepManagementSapProvider*
-NoOpSleepAlgorithm::GetLteSleepManagementSapProvider ()
+SwesSleepAlgorithm::GetLteSleepManagementSapProvider ()
 {
     NS_LOG_FUNCTION (this);
     return m_sleepManagementSapProvider;
@@ -80,15 +82,25 @@ NoOpSleepAlgorithm::GetLteSleepManagementSapProvider ()
 
 
 void
-NoOpSleepAlgorithm::DoInitialize ()
+SwesSleepAlgorithm::DoInitialize ()
 {
     NS_LOG_FUNCTION (this);
     LteSleepAlgorithm::DoInitialize ();
+
+    NS_LOG_LOGIC (this << " requesting Event A4 measurements"
+                     << " (threshold=" << (uint16_t) m_threshold << ")");
+    LteRrcSap::ReportConfigEutra reportConfig;
+    reportConfig.eventId = LteRrcSap::ReportConfigEutra::EVENT_A4;
+    reportConfig.threshold1.choice = LteRrcSap::ThresholdEutra::THRESHOLD_RSRP;
+    reportConfig.threshold1.range = m_threshold;
+    reportConfig.triggerQuantity = LteRrcSap::ReportConfigEutra::RSRP;
+    reportConfig.reportInterval = LteRrcSap::ReportConfigEutra::MS480;
+    m_measId = m_sleepManagementSapUser->AddUeMeasReportConfigForSleep (reportConfig);
 }
 
 
 void
-NoOpSleepAlgorithm::DoReportUeMeas (uint16_t rnti, LteRrcSap::MeasResults measResults)
+SwesSleepAlgorithm::DoReportUeMeas (uint16_t rnti, LteRrcSap::MeasResults measResults)
 {
     NS_LOG_FUNCTION (this);
 }

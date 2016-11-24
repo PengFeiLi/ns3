@@ -63,6 +63,7 @@ public:
   virtual uint16_t AllocateTemporaryCellRnti ();
   virtual void NotifyLcConfigResult (uint16_t rnti, uint8_t lcid, bool success);
   virtual void RrcConfigurationUpdateInd (UeConfig params);
+  virtual void ReportDlCqi (CqiListElement_s cqi);
 
 private:
   LteEnbRrc* m_rrc;
@@ -89,6 +90,12 @@ void
 EnbRrcMemberLteEnbCmacSapUser::RrcConfigurationUpdateInd (UeConfig params)
 {
   m_rrc->DoRrcConfigurationUpdateInd (params);
+}
+
+void
+EnbRrcMemberLteEnbCmacSapUser::ReportDlCqi (CqiListElement_s cqi)
+{
+  m_rrc->DoReportDlCqi (cqi);
 }
 
 
@@ -873,7 +880,7 @@ UeManager::RecvRrcConnectionRequest (LteRrcSap::RrcConnectionRequest msg)
             //   {
             //     m_rrc->m_s1SapProvider->InitialUeMessage (m_imsi, m_rnti);
             //   }
-
+            m_pendingRrcConnectionReconfiguration = true;
             // send RRC CONNECTION SETUP to UE
             LteRrcSap::RrcConnectionSetup msg2;
             msg2.rrcTransactionIdentifier = GetNewRrcTransactionIdentifier ();
@@ -1193,6 +1200,12 @@ UeManager::RecvMeasurementReport (LteRrcSap::MeasurementReport msg)
       m_rrc->m_ffrRrcSapProvider->ReportUeMeas (m_rnti, msg.measResults);
     }
 
+    if ((m_rrc->m_sleepManagementSapProvider != 0)
+      && (m_rrc->m_sleepMeasIds.find (measId) != m_rrc->m_sleepMeasIds.end ()))
+    {
+      // this measurement was requested by the FFR function
+      m_rrc->m_sleepManagementSapProvider->ReportUeMeas (m_rnti, msg.measResults);
+    }
   // fire a trace source
   m_rrc->m_recvMeasurementReportTrace (m_imsi, m_rrc->m_cellId, m_rnti, msg);
 
@@ -1525,7 +1538,8 @@ LteEnbRrc::LteEnbRrc ()
     m_lastAllocatedConfigurationIndex (0),
     m_reconfigureUes (false),
     m_sleepManagementSapProvider (0),
-    m_isSleeping (false)
+    m_isSleeping (false),
+    m_dlCqiPeriod (MilliSeconds(100))
 {
   NS_LOG_FUNCTION (this);
   m_cmacSapUser = new EnbRrcMemberLteEnbCmacSapUser (this);
@@ -2003,6 +2017,9 @@ LteEnbRrc::ConfigureCell (uint8_t ulBandwidth, uint8_t dlBandwidth,
    * SystemInformationPeriodicity attribute to configure this).
    */
   Simulator::Schedule (MilliSeconds (16), &LteEnbRrc::SendSystemInformation, this);
+
+  if (isSmallCell ())
+    Simulator::Schedule ( MilliSeconds (200), &LteEnbRrc::DoSendDlCqi, this);
 
   m_configured = true;
 
@@ -2937,6 +2954,58 @@ void
 LteEnbRrc::DoSleepTrigger (LteRrcSap::SleepPolicy sleepPolicy)
 {
   NS_LOG_FUNCTION (this);
+}
+
+uint8_t
+LteEnbRrc::DoAddUeMeasReportConfigForSleep (LteRrcSap::ReportConfigEutra reportConfig)
+{
+  NS_LOG_FUNCTION (this);
+  uint8_t measId = AddUeMeasReportConfig (reportConfig);
+  m_sleepMeasIds.insert (measId);
+  return measId;
+}
+
+void
+LteEnbRrc::DoReportDlCqi (CqiListElement_s cqi)
+{
+  NS_LOG_FUNCTION (this);
+  if(isMacroCell () || cqi.m_cqiType!=CqiListElement_s::P10)
+    return; 
+
+  NS_LOG_INFO ("CQI: " << cqi.m_rnti << " " << (int) cqi.m_wbCqi[0]);
+  m_cqiReport[cqi.m_rnti] = cqi.m_wbCqi[0];
+}
+
+void
+LteEnbRrc::DoSendDlCqi ()
+{
+  NS_LOG_FUNCTION (this);
+
+  if (!m_cqiReport.empty ())
+  {
+    EpcX2Sap::DlCqiParams params;
+    params.sourceCellId = m_cellId;
+    params.targetCellId = GetMacroCellId ();
+
+    std::map<uint16_t, uint8_t>::iterator it = m_cqiReport.begin ();
+    while (it != m_cqiReport.end ())
+    {
+      params.rntis.push_back (it->first);
+      params.cqis.push_back (it->second);
+      ++it;
+    }
+    NS_LOG_INFO ("send DL CQI " << m_cellId << " total " << params.rntis.size());
+    m_x2SapProvider->SendDlCqi (params);
+  }
+
+  Simulator::Schedule ( m_dlCqiPeriod, &LteEnbRrc::DoSendDlCqi, this);
+}
+
+void
+LteEnbRrc::DoRecvDlCqi (EpcX2SapUser::DlCqiParams params)
+{
+  NS_LOG_FUNCTION (this);
+  NS_LOG_INFO ("recv DL CQI from " << params.sourceCellId << " total " << params.rntis.size ());
 }
 
 } // namespace ns3

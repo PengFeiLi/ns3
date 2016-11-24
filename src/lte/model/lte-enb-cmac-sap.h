@@ -215,6 +215,8 @@ public:
    * \param params 
    */
   virtual void RrcConfigurationUpdateInd (UeConfig params) = 0;
+
+  virtual void ReportDlCqi (CqiListElement_s cqi) = 0;
 };
 
 

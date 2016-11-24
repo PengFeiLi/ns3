@@ -134,6 +134,7 @@ main (int argc, char *argv[])
 
   Ptr<LteHelper> lteHelper = CreateObject<LteHelper> ();
   lteHelper->SetSchedulerType ("ns3::PfFfMacScheduler");
+  lteHelper->SetSleepAlgorithmType ("ns3::SwesSleepAlgorithm");
   Ptr<PointToPointEpcHelper>  epcHelper = CreateObject<PointToPointEpcHelper> ();
   lteHelper->SetEpcHelper (epcHelper);
 

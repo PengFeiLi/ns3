@@ -1057,8 +1057,8 @@ LteUeRrc::SynchronizeToStrongestCell ()
        * This block attempts to find a cell with strongest RSRP and has not
        * yet been identified as "acceptable cell".
        */
-      if (!isMacroCell (it->first))
-        continue;
+      if(!isMacroCell (it->first))
+          continue;
       if (maxRsrp < it->second.rsrp)
         {
           std::set<uint16_t>::const_iterator itCell;
@@ -2920,7 +2920,7 @@ LteUeRrc::isSmallCell (uint16_t cellId)
 bool
 LteUeRrc::isBelongTo (uint16_t smallCellId, uint16_t macroCellId)
 {
-  return ((smallCellId & 0xFFC0) == macroCellId);
+  return ((smallCellId & 0x003F) && (smallCellId & 0xFFC0) == macroCellId);
 }
 
 bool
@@ -3046,7 +3046,7 @@ LteUeRrc::DoReportSmallUeMeasurements (LteUeCphySapUser::UeMeasurementsParameter
     {
       if (!isSmallCell (newMeasIt->m_cellId))
         continue;
-      SmallSaveUeMeasurements (newMeasIt->m_cellId, newMeasIt->m_rsrp,
+      SaveUeMeasurements (newMeasIt->m_cellId, newMeasIt->m_rsrp,
                           newMeasIt->m_rsrq, useLayer3Filtering);
     }
 
@@ -3125,6 +3125,7 @@ LteUeRrc::SmallSaveUeMeasurements (uint16_t cellId, double rsrp, double rsrq,
 void
 LteUeRrc::SmallSynchronizeToStrongestCell ()
 {
+  /* FIX: when to use this function */
   NS_LOG_FUNCTION (this);
   NS_ASSERT (m_state == CONNECTED_NORMALLY && m_smallState == IDLE_CELL_SEARCH);
 
@@ -3132,7 +3133,7 @@ LteUeRrc::SmallSynchronizeToStrongestCell ()
   double maxRsrp = -std::numeric_limits<double>::infinity ();
 
   std::map<uint16_t, MeasValues>::iterator it;
-  for (it = m_smallStoredMeasValues.begin (); it != m_smallStoredMeasValues.end (); it++)
+  for (it = m_storedMeasValues.begin (); it != m_storedMeasValues.end (); it++)
     {
       /*
        * This block attempts to find a cell with strongest RSRP and has not
@@ -3249,7 +3250,7 @@ LteUeRrc::SmallEvaluateCellForSelection ()
 
   bool isSuitableCell = false;
   bool isAcceptableCell = false;
-  std::map<uint16_t, MeasValues>::iterator storedMeasIt = m_smallStoredMeasValues.find (cellId);
+  std::map<uint16_t, MeasValues>::iterator storedMeasIt = m_storedMeasValues.find (cellId);
   double qRxLevMeas = storedMeasIt->second.rsrp;
   double qRxLevMin = EutranMeasurementMapping::IeValue2ActualQRxLevMin (m_smallLastSib1.cellSelectionInfo.qRxLevMin);
   NS_LOG_LOGIC (this << " small cell selection to cellId=" << cellId
@@ -3626,8 +3627,8 @@ LteUeRrc::ReportSmallCellSearchMeasurements ()
   NS_LOG_INFO ("Ue " << m_imsi << " send SmallCellMeas_Srb1 to Macro Cell " << m_cellId);
   int i=0;
   std::map<uint16_t, MeasValues>::iterator storedMeasIt;
-  for (storedMeasIt = m_smallStoredMeasValues.begin ();
-        storedMeasIt != m_smallStoredMeasValues.end (); ++storedMeasIt)
+  for (storedMeasIt = m_storedMeasValues.begin ();
+        storedMeasIt != m_storedMeasValues.end (); ++storedMeasIt)
     {
         if (!isBelongTo (storedMeasIt->first, m_cellId))
           continue;

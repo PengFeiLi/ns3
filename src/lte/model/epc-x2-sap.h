@@ -361,6 +361,14 @@ public:
     bool        op;
   };
 
+  struct DlCqiParams
+  {
+    uint16_t sourceCellId;
+    uint16_t targetCellId;
+    std::vector<uint16_t> rntis;
+    std::vector<uint8_t> cqis;
+  };
+
 };
 
 
@@ -400,6 +408,8 @@ public:
   virtual void SendUeData (UeDataParams params) = 0;
 
   virtual void SendOnOffRequest (OnOffRequestParams params) = 0;
+
+  virtual void SendDlCqi (DlCqiParams params) = 0;
 };
 
 
@@ -439,6 +449,9 @@ public:
   virtual void RecvUeData (UeDataParams params) = 0;
 
   virtual void RecvOnOffRequest (OnOffRequestParams params) = 0;
+
+  virtual void RecvDlCqi (DlCqiParams params) = 0;
+
 };
 
 ///////////////////////////////////////
@@ -476,6 +489,8 @@ public:
   virtual void SendUeData (UeDataParams params);
 
   virtual void SendOnOffRequest (OnOffRequestParams params);
+
+  virtual void SendDlCqi (DlCqiParams params);
 
 private:
   EpcX2SpecificEpcX2SapProvider ();
@@ -577,6 +592,13 @@ EpcX2SpecificEpcX2SapProvider<C>::SendOnOffRequest (OnOffRequestParams params)
   m_x2->DoSendOnOffRequest (params);
 }
 
+template <class C>
+void
+EpcX2SpecificEpcX2SapProvider<C>::SendDlCqi (DlCqiParams params)
+{
+  m_x2->DoSendDlCqi (params);
+}
+
 ///////////////////////////////////////
 
 template <class C>
@@ -612,6 +634,8 @@ public:
   virtual void RecvUeData (UeDataParams params);
 
   virtual void RecvOnOffRequest (OnOffRequestParams params);
+
+  virtual void RecvDlCqi (DlCqiParams params);
 
 private:
   EpcX2SpecificEpcX2SapUser ();
@@ -711,6 +735,13 @@ void
 EpcX2SpecificEpcX2SapUser<C>::RecvOnOffRequest (OnOffRequestParams params)
 {
   m_rrc->DoRecvOnOffRequest (params);
+}
+
+template <class C>
+void
+EpcX2SpecificEpcX2SapUser<C>::RecvDlCqi (DlCqiParams params)
+{
+  m_rrc->DoRecvDlCqi (params);
 }
 
 } // namespace ns3

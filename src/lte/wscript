@@ -124,6 +124,7 @@ def build(bld):
         'model/lte-sleep-management-sap.cc',
         'model/lte-sleep-algorithm.cc',
         'model/no-op-sleep-algorithm.cc',
+        'model/swes-sleep-algorithm.cc',
         ]
 
     module_test = bld.create_ns3_module_test_library('lte')
@@ -301,7 +302,8 @@ def build(bld):
 		'model/lte-ue-power-control.h',           
         'model/lte-sleep-algorithm.h',
         'model/no-op-sleep-algorithm.h',
-        'model/lte-sleep-management-sap.h'
+        'model/lte-sleep-management-sap.h',
+        'model/swes-sleep-algorithm.h',
         ]
 
     if (bld.env['ENABLE_EMU']):

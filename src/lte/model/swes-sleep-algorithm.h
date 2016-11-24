@@ -19,47 +19,51 @@
  *
  */
 
-#ifndef LTE_SLEEP_ALGORITHM_H
-#define LTE_SLEEP_ALGORITHM_H
+#ifndef SWES_SLEEP_ALGORITHM_H
+#define SWES_SLEEP_ALGORITHM_H
 
-#include <ns3/object.h>
-#include <ns3/lte-rrc-sap.h>
+#include "lte-sleep-algorithm.h"
+#include "lte-sleep-management-sap.h"
+#include "lte-rrc-sap.h"
 
 namespace ns3 {
 
 
-class LteSleepManagementSapUser;
-class LteSleepManagementSapProvider;
-
-
-/**
- * \brief The abstract base class of a sleep algorithm the operates using
- *        the Sleep Management SAP interface.
- *
- * Sleep algorithm receives measurement reports from an macro cell RRC instance
- * and tells the macro cell RRC instance when to do a sleep
- */
-
-class LteSleepAlgorithm : public Object
+class SwesSleepAlgorithm : public LteSleepAlgorithm
 {
+
+    friend class MemberLteSleepManagementSapProvider<SwesSleepAlgorithm>;
+
 public:
-    LteSleepAlgorithm ();
-    virtual ~LteSleepAlgorithm ();
+    SwesSleepAlgorithm ();
+    virtual ~ SwesSleepAlgorithm ();
 
     static TypeId GetTypeId ();
 
-    virtual void SetLteSleepManagementSapUser (LteSleepManagementSapUser* s) = 0;
+    virtual void SetLteSleepManagementSapUser (LteSleepManagementSapUser* s);
 
-    virtual LteSleepManagementSapProvider* GetLteSleepManagementSapProvider () = 0;
+    virtual LteSleepManagementSapProvider* GetLteSleepManagementSapProvider ();
 
 protected:
+    virtual void DoInitialize ();
+
     virtual void DoDispose ();
 
-    virtual void DoReportUeMeas (uint16_t rnti, LteRrcSap::MeasResults measResults) = 0;
+    virtual void DoReportUeMeas (uint16_t rnti, LteRrcSap::MeasResults measResults);
 
+private:
+    LteSleepManagementSapProvider* m_sleepManagementSapProvider;
 
-}; // end of class LteSleepAlgorithm
+    LteSleepManagementSapUser* m_sleepManagementSapUser;
+
+    uint8_t m_threshold;
+
+    uint8_t m_measId;
+
+}; // end of SwesSleepAlgorithm
+
 
 } // end of namespace ns3
 
-#endif /* LTE_SLEEP_ALGORITHM_H */
+
+#endif /* SWES_SLEEP_ALGORITHM_H */

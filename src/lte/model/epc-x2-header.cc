@@ -2047,4 +2047,140 @@ EpcX2OnOffRequestHeader::GetNumberOfIes () const
   return m_numberOfIes;
 }
 
+//////////////////////////////////////////////////////////////////
+
+NS_OBJECT_ENSURE_REGISTERED (EpcX2DlCqiHeader);
+
+EpcX2DlCqiHeader::EpcX2DlCqiHeader ()
+  : m_numberOfIes (3),
+    m_headerLength (4)
+{
+}
+
+EpcX2DlCqiHeader::~EpcX2DlCqiHeader ()
+{
+  m_numberOfIes = 0;
+  m_headerLength = 0;
+}
+
+TypeId
+EpcX2DlCqiHeader::GetTypeId (void)
+{
+  static TypeId tid = TypeId ("ns3::EpcX2DlCqiHeader")
+    .SetParent<Header> ()
+    .SetGroupName ("Lte")
+    .AddConstructor<EpcX2DlCqiHeader> ()
+  ;
+  return tid;
+}
+
+TypeId
+EpcX2DlCqiHeader::GetInstanceTypeId (void) const
+{
+  return GetTypeId ();
+}
+
+uint32_t
+EpcX2DlCqiHeader::GetSerializedSize (void) const
+{
+  return m_headerLength;
+}
+
+void
+EpcX2DlCqiHeader::Serialize (Buffer::Iterator start) const
+{
+  Buffer::Iterator i = start;
+
+  i.WriteHtonU16 (m_srcCellId);
+
+  std::vector<uint16_t>::size_type sz = m_rntis.size ();
+
+  i.WriteHtonU16 (sz);
+
+  for (int j = 0; j < (int)sz; ++j)
+    i.WriteHtonU16 (m_rntis[j]);
+
+  for (int j = 0; j < (int)sz; ++j)
+    i.WriteU8 (m_cqis[j]);
+}
+
+uint32_t
+EpcX2DlCqiHeader::Deserialize (Buffer::Iterator start)
+{
+  Buffer::Iterator i = start;
+
+  m_srcCellId = i.ReadNtohU16 ();
+
+  int sz = i.ReadNtohU16 ();
+
+  for (int j = 0; j < sz; ++j)
+    m_rntis.push_back (i.ReadNtohU16 ());
+
+  for (int j = 0; j < sz; ++j)
+    m_cqis.push_back (i.ReadU8 ());
+
+  m_numberOfIes = 3;
+  m_headerLength = 4 + sz * (2 + 1);
+
+  return GetSerializedSize ();
+}
+
+void
+EpcX2DlCqiHeader::Print (std::ostream &os) const
+{
+  os << " CellId " << m_srcCellId
+     << " Number of CQI " << m_rntis.size ();
+}
+
+void
+EpcX2DlCqiHeader::SetSrcCellId (uint16_t cellId)
+{
+  m_srcCellId = cellId;
+}
+
+uint16_t
+EpcX2DlCqiHeader::GetSrcCellId () const
+{
+  return m_srcCellId;
+}
+
+void
+EpcX2DlCqiHeader::SetRntis (std::vector<uint16_t> rntis)
+{
+  m_rntis = rntis;
+  m_headerLength += m_rntis.size () * 2;
+}
+
+std::vector<uint16_t>
+EpcX2DlCqiHeader::GetRntis () const
+{
+  return m_rntis;
+}
+
+void
+EpcX2DlCqiHeader::SetCqis (std::vector<uint8_t> cqis)
+{
+  m_cqis = cqis;
+  m_headerLength += m_cqis.size () * 1;
+}
+
+std::vector<uint8_t>
+EpcX2DlCqiHeader::GetCqis () const
+{
+  return m_cqis;
+}
+
+uint32_t
+EpcX2DlCqiHeader::GetLengthOfIes () const
+{
+  return m_headerLength;
+}
+
+uint32_t
+EpcX2DlCqiHeader::GetNumberOfIes () const
+{
+  return m_numberOfIes;
+}
+
+
 } // namespace ns3

@@ -54,9 +54,7 @@ protected:
 
     virtual void DoDispose ();
 
-    virtual void DoReportSleepCellRsrp (uint16_t rnti, LteRrcSap::MeasResults measResults);
-
-    virtual void DoReportSleepSpectrumEfficiency (uint16_t cellId, LteRrcSap::SeResults seResults);
+    virtual void DoReportUeMeas (uint16_t rnti, LteRrcSap::MeasResults measResults);
 
 private:
     LteSleepManagementSapUser* m_sleepManagementSapUser;

@@ -655,7 +655,7 @@ LteEnbMac::ReceiveDlCqiLteControlMessage  (Ptr<DlCqiLteControlMessage> msg)
   NS_LOG_LOGIC (this << "Enb Received DL-CQI rnti" << dlcqi.m_rnti);
   NS_ASSERT (dlcqi.m_rnti != 0);
   m_dlCqiReceived.push_back (dlcqi);
-
+  m_cmacSapUser->ReportDlCqi (dlcqi);
 }
 
 

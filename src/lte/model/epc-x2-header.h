@@ -64,7 +64,8 @@ public:
     ResourceStatusReporting = 10,
     ConnectionRequest       = 12,
     ConnectionCompleted     = 13,
-    OnOffRequest            = 14
+    OnOffRequest            = 14,
+    DlCqi                   = 15
   };
 
   enum TypeOfMessage_t {
@@ -459,6 +460,40 @@ private:
 
   uint16_t          m_srcCellId;
   bool              m_op;
+};
+
+class EpcX2DlCqiHeader : public Header
+{
+public:
+  EpcX2DlCqiHeader ();
+  virtual ~EpcX2DlCqiHeader ();
+
+  static TypeId GetTypeId (void);
+  virtual TypeId GetInstanceTypeId (void) const;
+  virtual uint32_t GetSerializedSize (void) const;
+  virtual void Serialize (Buffer::Iterator start) const;
+  virtual uint32_t Deserialize (Buffer::Iterator start);
+  virtual void Print (std::ostream &os) const;
+
+  void SetSrcCellId (uint16_t cellId);
+  uint16_t GetSrcCellId () const;
+
+  void SetRntis (std::vector<uint16_t> rntis);
+  std::vector<uint16_t> GetRntis () const;
+
+  void SetCqis (std::vector<uint8_t> cqis);
+  std::vector<uint8_t> GetCqis () const;
+
+  uint32_t GetLengthOfIes () const;
+  uint32_t GetNumberOfIes () const;
+
+private:
+  uint32_t          m_numberOfIes;
+  uint32_t          m_headerLength;
+
+  uint16_t          m_srcCellId;
+  std::vector<uint16_t> m_rntis;
+  std::vector<uint8_t> m_cqis;
 };
 
 } // namespace ns3

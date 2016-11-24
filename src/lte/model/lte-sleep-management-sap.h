@@ -37,9 +37,8 @@ class LteSleepManagementSapProvider
 public:
     virtual ~LteSleepManagementSapProvider ();
 
-    virtual void ReportSleepRsrp (uint16_t rnti, LteRrcSap::MeasResults measResults) = 0;
+    virtual void ReportUeMeas (uint16_t rnti, LteRrcSap::MeasResults measResults) = 0;
 
-    virtual void ReportSleepSpectrumEfficiency (uint16_t cellId, LteRrcSap::SeResults seResults) = 0;
 }; // end of LteSleepManagementSapProvider
 
 
@@ -52,7 +51,7 @@ class LteSleepManagementSapUser
 public:
     virtual ~LteSleepManagementSapUser ();
 
-    virtual void CollectSleepInformation () = 0;
+    virtual uint8_t AddUeMeasReportConfigForSleep (LteRrcSap::ReportConfigEutra reportConfig) = 0;
 
     virtual void SleepTrigger (LteRrcSap::SleepPolicy sleepPolicy) = 0;
 }; // end of LteSleepManagementSapUser
@@ -64,9 +63,7 @@ class MemberLteSleepManagementSapProvider : public LteSleepManagementSapProvider
 public:
     MemberLteSleepManagementSapProvider (C* owner);
 
-    virtual void ReportSleepRsrp (uint16_t rnti, LteRrcSap::MeasResults measResults);
-
-    virtual void ReportSleepSpectrumEfficiency (uint16_t cellId, LteRrcSap::SeResults seResults); 
+    virtual void ReportUeMeas (uint16_t rnti, LteRrcSap::MeasResults measResults);
 
 private:
     MemberLteSleepManagementSapProvider ();
@@ -81,16 +78,9 @@ MemberLteSleepManagementSapProvider<C>::MemberLteSleepManagementSapProvider (C* 
 
 template <class C>
 void
-MemberLteSleepManagementSapProvider<C>::ReportSleepRsrp (uint16_t rnti, LteRrcSap::MeasResults measResults)
+MemberLteSleepManagementSapProvider<C>::ReportUeMeas (uint16_t rnti, LteRrcSap::MeasResults measResults)
 {
-    m_owner->DoReportSleepCellRsrp (rnti, measResults);
-}
-
-template <class C>
-void
-MemberLteSleepManagementSapProvider<C>::ReportSleepSpectrumEfficiency (uint16_t cellId, LteRrcSap::SeResults seResults)
-{
-    m_owner->DoReportSleepSpectrumEfficiency (cellId, seResults);
+    m_owner->DoReportUeMeas (rnti, measResults);
 }
 
 
@@ -100,7 +90,7 @@ class MemberLteSleepManagementSapUser : public LteSleepManagementSapUser
 public:
     MemberLteSleepManagementSapUser (C* owner);
 
-    virtual void CollectSleepInformation ();
+    virtual uint8_t AddUeMeasReportConfigForSleep (LteRrcSap::ReportConfigEutra reportConfig);
 
     virtual void SleepTrigger (LteRrcSap::SleepPolicy sleepPolicy);
 
@@ -116,10 +106,10 @@ MemberLteSleepManagementSapUser<C>::MemberLteSleepManagementSapUser (C* owner)
 }
 
 template <class C>
-void
-MemberLteSleepManagementSapUser<C>::CollectSleepInformation ()
+uint8_t
+MemberLteSleepManagementSapUser<C>::AddUeMeasReportConfigForSleep (LteRrcSap::ReportConfigEutra reportConfig)
 {
-    m_owner->DoCollectSleepInformation ();
+    return m_owner->DoAddUeMeasReportConfigForSleep (reportConfig);
 }
 
 template <class C>

@@ -41,6 +41,7 @@
 #include <ns3/lte-anr-sap.h>
 #include <ns3/lte-ffr-rrc-sap.h>
 #include <ns3/lte-sleep-management-sap.h>
+#include <ns3/ff-mac-common.h>
 
 #include <map>
 #include <set>
@@ -1285,13 +1286,12 @@ private:
   TracedCallback<uint64_t, uint16_t, uint16_t, LteRrcSap::MeasurementReport> m_recvMeasurementReportTrace;
 
 private:
-  bool m_enableSleepMode;
-
   bool isMacroCell () { return !(m_cellId & 0x003F); }
   bool isSmallCell () { return !isMacroCell(); }
 
 public:
   uint16_t GetCellId () const { return m_cellId; }
+  uint16_t GetMacroCellId () const { return m_cellId & (~0x003F); }
 
 /************ only available on the macro cell side ************/
 private:
@@ -1302,8 +1302,12 @@ private:
   std::set<uint16_t> m_onCells;
   std::set<uint16_t> m_offCells;
 
+  std::set<uint8_t> m_sleepMeasIds;
+
   LteSleepManagementSapUser* m_sleepManagementSapUser;
   LteSleepManagementSapProvider* m_sleepManagementSapProvider;
+
+  uint8_t DoAddUeMeasReportConfigForSleep (LteRrcSap::ReportConfigEutra reportConfig);
 
   uint16_t GetUeOnSmallCell (uint16_t cellId);
   void IncUeOnSmallCell (uint16_t cellId);
@@ -1323,6 +1327,8 @@ private:
   void DoCollectSleepInformation ();
   void DoSleepTrigger (LteRrcSap::SleepPolicy sleepPolicy);
 
+  void DoRecvDlCqi (EpcX2SapUser::DlCqiParams params);
+
 public:
   void RegisterSmallCell (uint16_t cellId);
 
@@ -1332,12 +1338,20 @@ public:
 /**************** only availabe on the small cell side *****************/
 private:
   bool m_isSleeping;
+
+  std::map<uint16_t, uint8_t> m_cqiReport;
+
+  Time m_dlCqiPeriod;
+
   void DoTurnOn ();
   void DoTurnOff ();
 
   void DoRecvMacroConnectionRequest (EpcX2SapUser::ConnectionRequestParams params);
   void DoRecvSmallConnCompleted (EpcX2SapUser::SmallConnCompletedParams params);
   void DoRecvOnOffRequest (EpcX2SapUser::OnOffRequestParams params);
+
+  void DoReportDlCqi (CqiListElement_s cqi);
+  void DoSendDlCqi ();
 
 }; // end of `class LteEnbRrc`
 

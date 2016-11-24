@@ -429,6 +429,23 @@ EpcX2::RecvFromX2cSocket (Ptr<Socket> socket)
           m_x2SapUser->RecvOnOffRequest (params);
         }
     }
+  else if (procedureCode == EpcX2Header::DlCqi)
+    {
+      if (messageType == EpcX2Header::InitiatingMessage)
+        {
+          NS_LOG_LOGIC ("Recv X2 message: DL CQI");
+
+          EpcX2DlCqiHeader x2DlCqiHeader;
+          packet->RemoveHeader (x2DlCqiHeader);
+
+          EpcX2SapUser::DlCqiParams params;
+          params.sourceCellId = x2DlCqiHeader.GetSrcCellId ();
+          params.rntis = x2DlCqiHeader.GetRntis ();
+          params.cqis = x2DlCqiHeader.GetCqis ();
+
+          m_x2SapUser->RecvDlCqi (params);
+        }
+    }
   else
     {
       NS_ASSERT_MSG (false, "ProcedureCode NOT SUPPORTED!!!");
@@ -994,6 +1011,50 @@ EpcX2::DoSendOnOffRequest (EpcX2SapProvider::OnOffRequestParams params)
   // Build the X2 packet
   Ptr<Packet> packet = Create <Packet> ();
   packet->AddHeader (x2OnOffRequestHeader);
+  packet->AddHeader (x2Header);
+  NS_LOG_INFO ("packetLen = " << packet->GetSize ());
+
+  // Send the X2 message through the socket
+  sourceSocket->SendTo (packet, 0, InetSocketAddress (targetIpAddr, m_x2cUdpPort));
+}
+
+void
+EpcX2::DoSendDlCqi (EpcX2SapProvider::DlCqiParams params)
+{
+  NS_LOG_FUNCTION (this);
+
+  NS_LOG_LOGIC ("sourceCellId = " << params.sourceCellId);
+  NS_LOG_LOGIC ("targetCellId = " << params.targetCellId);
+
+  NS_ASSERT_MSG (m_x2InterfaceSockets.find (params.targetCellId) != m_x2InterfaceSockets.end (),
+                 "Missing infos for targetCellId = " << params.targetCellId);
+  Ptr<X2IfaceInfo> socketInfo = m_x2InterfaceSockets [params.targetCellId];
+  Ptr<Socket> sourceSocket = socketInfo->m_localCtrlPlaneSocket;
+  Ipv4Address targetIpAddr = socketInfo->m_remoteIpAddr;
+
+  NS_LOG_LOGIC ("sourceSocket = " << sourceSocket);
+  NS_LOG_LOGIC ("targetIpAddr = " << targetIpAddr);
+
+  NS_LOG_INFO ("Send X2 message: ON/OFF REQUEST");
+
+  // Build the X2 message
+  EpcX2DlCqiHeader x2DlCqiHeader;
+  x2DlCqiHeader.SetSrcCellId (params.sourceCellId);
+  x2DlCqiHeader.SetRntis (params.rntis);
+  x2DlCqiHeader.SetCqis (params.cqis);
+
+  EpcX2Header x2Header;
+  x2Header.SetMessageType (EpcX2Header::InitiatingMessage);
+  x2Header.SetProcedureCode (EpcX2Header::DlCqi);
+  x2Header.SetLengthOfIes (x2DlCqiHeader.GetLengthOfIes ());
+  x2Header.SetNumberOfIes (x2DlCqiHeader.GetNumberOfIes ());
+
+  NS_LOG_INFO ("X2 header: " << x2Header);
+  NS_LOG_INFO ("X2 OnOffRequest header: " << x2DlCqiHeader);
+
+  // Build the X2 packet
+  Ptr<Packet> packet = Create <Packet> ();
+  packet->AddHeader (x2DlCqiHeader);
   packet->AddHeader (x2Header);
   NS_LOG_INFO ("packetLen = " << packet->GetSize ());
 
