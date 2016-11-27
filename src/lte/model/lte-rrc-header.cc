@@ -4063,7 +4063,7 @@ RrcConnectionSetupHeader::PreSerialize () const
   SerializeSequence (std::bitset<0> (),false);
 
   // Serialize rrc-TransactionIdentifier ::=INTEGER (0..3)
-  SerializeInteger (m_rrcTransactionIdentifier,0,3);
+  SerializeInteger (m_rrcTransactionIdentifier,0,64);
 
   // Serialize criticalExtensions choice:
   // 2 options, selected: 0 (option: c1)
@@ -4106,7 +4106,7 @@ RrcConnectionSetupHeader::Deserialize (Buffer::Iterator bIterator)
   bIterator = DeserializeSequence (&bitset0,false,bIterator);
 
   // Deserialize rrc-TransactionIdentifier ::=INTEGER (0..3)
-  bIterator = DeserializeInteger (&n,0,3,bIterator);
+  bIterator = DeserializeInteger (&n,0,64,bIterator);
   m_rrcTransactionIdentifier = n;
 
   // Deserialize criticalExtensions choice
@@ -4236,7 +4236,7 @@ RrcConnectionSetupCompleteHeader::PreSerialize () const
   SerializeInteger (m_cellType, 0, 1);
 
   // Serialize rrc-TransactionIdentifier
-  SerializeInteger (m_rrcTransactionIdentifier,0,3);
+  SerializeInteger (m_rrcTransactionIdentifier,0,64);
 
   // Serialize criticalExtensions choice
   // 2 options, selected 0 (c1)
@@ -4264,7 +4264,7 @@ RrcConnectionSetupCompleteHeader::Deserialize (Buffer::Iterator bIterator)
   int n;
   bIterator = DeserializeInteger (&n,0,1,bIterator);
   m_cellType = n;
-  bIterator = DeserializeInteger (&n,0,3,bIterator);
+  bIterator = DeserializeInteger (&n,0,64,bIterator);
   m_rrcTransactionIdentifier = n;
 
   bIterator = DeserializeChoice (2,false,&n,bIterator);
@@ -4353,7 +4353,7 @@ RrcConnectionReconfigurationCompleteHeader::PreSerialize () const
   SerializeSequence (std::bitset<0> (),false);
 
   // Serialize rrc-TransactionIdentifier
-  SerializeInteger (m_rrcTransactionIdentifier,0,3);
+  SerializeInteger (m_rrcTransactionIdentifier,0,64);
 
   // Serialize criticalExtensions choice
   // 2 options, selected 1 (criticalExtensionsFuture)
@@ -4375,7 +4375,7 @@ RrcConnectionReconfigurationCompleteHeader::Deserialize (Buffer::Iterator bItera
   bIterator = DeserializeUlDcchMessage (bIterator);
   bIterator = DeserializeSequence (&bitset0,false,bIterator);
 
-  bIterator = DeserializeInteger (&n,0,3,bIterator);
+  bIterator = DeserializeInteger (&n,0,64,bIterator);
   m_rrcTransactionIdentifier = n;
 
   bIterator = DeserializeChoice (2,false,&n,bIterator);
@@ -4443,7 +4443,7 @@ RrcConnectionReconfigurationHeader::PreSerialize () const
   SerializeSequence (std::bitset<0> (),false);
 
   // Serialize rrc-TransactionIdentifier
-  SerializeInteger (m_rrcTransactionIdentifier,0,3);
+  SerializeInteger (m_rrcTransactionIdentifier,0,64);
 
   // Serialize criticalExtensions choice
   // 2 options, selected 0 (c1)
@@ -4585,7 +4585,7 @@ RrcConnectionReconfigurationHeader::Deserialize (Buffer::Iterator bIterator)
 
   // rrc-TransactionIdentifier
   int n;
-  bIterator = DeserializeInteger (&n,0,3,bIterator);
+  bIterator = DeserializeInteger (&n,0,64,bIterator);
   m_rrcTransactionIdentifier = n;
 
   // criticalExtensions
@@ -5526,7 +5526,7 @@ RrcConnectionReestablishmentHeader::PreSerialize () const
   SerializeSequence (std::bitset<0> (),false);
 
   // Serialize rrc-TransactionIdentifier
-  SerializeInteger (m_rrcTransactionIdentifier,0,3);
+  SerializeInteger (m_rrcTransactionIdentifier,0,64);
 
   // Serialize criticalExtensions choice
   SerializeChoice (2,0,false);
@@ -5561,7 +5561,7 @@ RrcConnectionReestablishmentHeader::Deserialize (Buffer::Iterator bIterator)
   bIterator = DeserializeSequence (&bitset0,false,bIterator);
 
   // Deserialize rrc-TransactionIdentifier
-  bIterator = DeserializeInteger (&n,0,3,bIterator);
+  bIterator = DeserializeInteger (&n,0,64,bIterator);
   m_rrcTransactionIdentifier = n;
 
   // Deserialize criticalExtensions choice
@@ -5655,7 +5655,7 @@ RrcConnectionReestablishmentCompleteHeader::PreSerialize () const
   SerializeSequence (std::bitset<0> (),false);
 
   // Serialize rrc-TransactionIdentifier
-  SerializeInteger (m_rrcTransactionIdentifier,0,3);
+  SerializeInteger (m_rrcTransactionIdentifier,0,64);
 
   // Serialize criticalExtensions choice
   SerializeChoice (2,0,false);
@@ -5681,7 +5681,7 @@ RrcConnectionReestablishmentCompleteHeader::Deserialize (Buffer::Iterator bItera
   bIterator = DeserializeSequence (&bitset0,false,bIterator);
 
   // Deserialize rrc-TransactionIdentifier
-  bIterator = DeserializeInteger (&n,0,3,bIterator);
+  bIterator = DeserializeInteger (&n,0,64,bIterator);
   m_rrcTransactionIdentifier = n;
 
   // Deserialize criticalExtensions choice
@@ -6524,7 +6524,7 @@ RrcSmallConnectionSetupHeader::PreSerialize () const
   SerializeSequence (std::bitset<0> (),false);
 
   // Serialize rrc-TransactionIdentifier ::=INTEGER (0..3)
-  SerializeInteger (m_rrcTransactionIdentifier,0,3);
+  SerializeInteger (m_rrcTransactionIdentifier,0,64);
 
   // Serialize criticalExtensions choice:
   // 2 options, selected: 0 (option: c1)
@@ -6567,7 +6567,7 @@ RrcSmallConnectionSetupHeader::Deserialize (Buffer::Iterator bIterator)
   bIterator = DeserializeSequence (&bitset0,false,bIterator);
 
   // Deserialize rrc-TransactionIdentifier ::=INTEGER (0..3)
-  bIterator = DeserializeInteger (&n,0,3,bIterator);
+  bIterator = DeserializeInteger (&n,0,64,bIterator);
   m_rrcTransactionIdentifier = n;
 
   // Deserialize criticalExtensions choice

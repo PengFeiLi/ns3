@@ -369,6 +369,31 @@ public:
     std::vector<uint8_t> cqis;
   };
 
+  struct HandoverTriggerParams
+  {
+    uint16_t sourceCellId;
+    uint16_t targetCellId;
+
+    uint16_t hoTargetCellId;
+    uint16_t rnti;
+  };
+
+  struct SwitchStateParams
+  {
+    uint16_t sourceCellId;
+    uint16_t targetCellId;
+
+    uint16_t rnti;
+    uint8_t state;
+  };
+
+  struct HandoverReconfigurationAckParams
+  {
+    uint16_t sourceCellId;
+    uint16_t targetCellId;
+    uint16_t rnti;
+  };
+
 };
 
 
@@ -410,6 +435,14 @@ public:
   virtual void SendOnOffRequest (OnOffRequestParams params) = 0;
 
   virtual void SendDlCqi (DlCqiParams params) = 0;
+
+  virtual void SendHandoverTrigger (HandoverTriggerParams params) = 0;
+
+  virtual void SendSwitchState (SwitchStateParams params) = 0;
+
+  virtual void SendHandoverReconfigurationAck (HandoverReconfigurationAckParams params) = 0;
+
+  virtual void SendHandoverTriggerAck (HandoverTriggerParams params) = 0;
 };
 
 
@@ -452,6 +485,13 @@ public:
 
   virtual void RecvDlCqi (DlCqiParams params) = 0;
 
+  virtual void RecvHandoverTrigger (HandoverTriggerParams params) = 0;
+
+  virtual void RecvSwitchState (SwitchStateParams params) = 0;
+
+  virtual void RecvHandoverReconfigurationAck (HandoverReconfigurationAckParams params) = 0;
+
+  virtual void RecvHandoverTriggerAck (HandoverTriggerParams params) = 0;
 };
 
 ///////////////////////////////////////
@@ -491,6 +531,14 @@ public:
   virtual void SendOnOffRequest (OnOffRequestParams params);
 
   virtual void SendDlCqi (DlCqiParams params);
+
+  virtual void SendHandoverTrigger (HandoverTriggerParams params);
+
+  virtual void SendSwitchState (SwitchStateParams params);
+
+  virtual void SendHandoverReconfigurationAck (HandoverReconfigurationAckParams params);
+
+  virtual void SendHandoverTriggerAck (HandoverTriggerParams params);
 
 private:
   EpcX2SpecificEpcX2SapProvider ();
@@ -599,6 +647,34 @@ EpcX2SpecificEpcX2SapProvider<C>::SendDlCqi (DlCqiParams params)
   m_x2->DoSendDlCqi (params);
 }
 
+template <class C>
+void
+EpcX2SpecificEpcX2SapProvider<C>::SendHandoverTrigger (HandoverTriggerParams params)
+{
+  m_x2->DoSendHandoverTrigger (params);
+}
+
+template <class C>
+void
+EpcX2SpecificEpcX2SapProvider<C>::SendSwitchState (SwitchStateParams params)
+{
+  m_x2->DoSendSwitchState (params);
+}
+
+template <class C>
+void
+EpcX2SpecificEpcX2SapProvider<C>::SendHandoverReconfigurationAck (HandoverReconfigurationAckParams params)
+{
+  m_x2->DoSendHandoverReconfigurationAck (params);
+}
+
+template <class C>
+void
+EpcX2SpecificEpcX2SapProvider<C>::SendHandoverTriggerAck (HandoverTriggerParams params)
+{
+  m_x2->DoSendHandoverTriggerAck (params);
+}
+
 ///////////////////////////////////////
 
 template <class C>
@@ -636,6 +712,14 @@ public:
   virtual void RecvOnOffRequest (OnOffRequestParams params);
 
   virtual void RecvDlCqi (DlCqiParams params);
+
+  virtual void RecvHandoverTrigger (HandoverTriggerParams params);
+
+  virtual void RecvSwitchState (SwitchStateParams params);
+
+  virtual void RecvHandoverReconfigurationAck (HandoverReconfigurationAckParams params);
+
+  virtual void RecvHandoverTriggerAck (HandoverTriggerParams params);
 
 private:
   EpcX2SpecificEpcX2SapUser ();
@@ -742,6 +826,34 @@ void
 EpcX2SpecificEpcX2SapUser<C>::RecvDlCqi (DlCqiParams params)
 {
   m_rrc->DoRecvDlCqi (params);
+}
+
+template <class C>
+void
+EpcX2SpecificEpcX2SapUser<C>::RecvHandoverTrigger (HandoverTriggerParams params)
+{
+  m_rrc->DoRecvHandoverTrigger (params);
+}
+
+template <class C>
+void
+EpcX2SpecificEpcX2SapUser<C>::RecvSwitchState (SwitchStateParams params)
+{
+  m_rrc->DoRecvSwitchState (params);
+}
+
+template <class C>
+void
+EpcX2SpecificEpcX2SapUser<C>::RecvHandoverReconfigurationAck (HandoverReconfigurationAckParams params)
+{
+  m_rrc->DoRecvHandoverReconfigurationAck (params);
+}
+
+template <class C>
+void
+EpcX2SpecificEpcX2SapUser<C>::RecvHandoverTriggerAck (HandoverTriggerParams params)
+{
+  m_rrc->DoRecvHandoverTriggerAck (params);
 }
 
 } // namespace ns3

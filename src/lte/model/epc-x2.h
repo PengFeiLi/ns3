@@ -140,6 +140,10 @@ protected:
   virtual void DoSendUeData (EpcX2SapProvider::UeDataParams params);
   virtual void DoSendOnOffRequest (EpcX2SapProvider::OnOffRequestParams params);
   virtual void DoSendDlCqi (EpcX2SapProvider::DlCqiParams params);
+  virtual void DoSendHandoverTrigger (EpcX2SapProvider::HandoverTriggerParams params);
+  virtual void DoSendSwitchState (EpcX2SapProvider::SwitchStateParams params);
+  virtual void DoSendHandoverReconfigurationAck (EpcX2SapProvider::HandoverReconfigurationAckParams params);
+  virtual void DoSendHandoverTriggerAck (EpcX2SapProvider::HandoverTriggerParams params);
 
   EpcX2SapUser* m_x2SapUser;
   EpcX2SapProvider* m_x2SapProvider;

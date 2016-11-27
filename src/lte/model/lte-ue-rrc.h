@@ -950,6 +950,26 @@ private:
    */
   void ConnectionTimeout ();
 
+
+public:
+  enum Path
+  {
+    PATH_CONTROL,
+    PATH_DATA,
+    NUM_PATHS
+  };
+
+  uint16_t GetSmallCellId () const;
+
+  LteUeCphySapUser* GetSmallLteUeCphySapUser ();
+  LteUeRrcSapProvider* GetSmallLteUeRrcSapProvider ();
+  LteUeCmacSapUser* GetSmallLteUeCmacSapUser ();
+
+  void SetSmallLteUeCphySapProvider (LteUeCphySapProvider* s);
+  void SetSmallLteUeRrcSapUser (LteUeRrcSapUser* s);
+  void SetSmallLteUeCmacSapProvider (LteUeCmacSapProvider* s);
+  void SetSmallLteMacSapProvider (LteMacSapProvider * s);
+
 private:
   State m_smallState;
   uint16_t m_smallCellId;
@@ -992,15 +1012,6 @@ private:
   std::map <uint8_t, Ptr<LteDataRadioBearerInfo> > m_smallDrbMap;
   std::map<uint8_t, uint8_t> m_smallBid2DrbidMap;
 
-public:
-  enum Path
-  {
-    PATH_CONTROL,
-    PATH_DATA,
-    NUM_PATHS
-  };
-
-private:
   Path m_path;
 
   //control和data时分复用(ms)
@@ -1039,19 +1050,6 @@ private:
 
   void DoSendRrcSmallConnectionRequest ();
   void DoSendScInfoRequest (uint16_t cellId);
-
-
-public:
-  uint16_t GetSmallCellId () const;
-
-  LteUeCphySapUser* GetSmallLteUeCphySapUser ();
-  LteUeRrcSapProvider* GetSmallLteUeRrcSapProvider ();
-  LteUeCmacSapUser* GetSmallLteUeCmacSapUser ();
-
-  void SetSmallLteUeCphySapProvider (LteUeCphySapProvider* s);
-  void SetSmallLteUeRrcSapUser (LteUeRrcSapUser* s);
-  void SetSmallLteUeCmacSapProvider (LteUeCmacSapProvider* s);
-  void SetSmallLteMacSapProvider (LteMacSapProvider * s);
 
 }; // end of class LteUeRrc
 

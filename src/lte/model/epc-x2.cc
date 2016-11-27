@@ -446,7 +446,65 @@ EpcX2::RecvFromX2cSocket (Ptr<Socket> socket)
           m_x2SapUser->RecvDlCqi (params);
         }
     }
-  else
+  else if (procedureCode == EpcX2Header::HandoverTrigger)
+  {
+    if (messageType == EpcX2Header::InitiatingMessage)
+      {
+        NS_LOG_LOGIC ("Recv X2 message: Handover Trigger");
+
+        EpcX2HandoverTriggerHeader x2HandoverTriggerHeader;
+        packet->RemoveHeader (x2HandoverTriggerHeader);
+
+        EpcX2SapUser::HandoverTriggerParams params;
+        params.rnti = x2HandoverTriggerHeader.GetRnti ();
+        params.hoTargetCellId = x2HandoverTriggerHeader.GetTargetCellId ();
+
+        m_x2SapUser->RecvHandoverTrigger (params);
+      }
+    else if (messageType == EpcX2Header::SuccessfulOutcome)
+      {
+        NS_LOG_LOGIC ("Recv X2 message: Handover Trigger ACK");
+
+        EpcX2HandoverTriggerHeader x2HandoverTriggerHeader;
+        packet->RemoveHeader (x2HandoverTriggerHeader);
+
+        EpcX2SapUser::HandoverTriggerParams params;
+        params.rnti = x2HandoverTriggerHeader.GetRnti ();
+
+        m_x2SapUser->RecvHandoverTriggerAck (params);
+      }
+  }
+  else if (procedureCode == EpcX2Header::SwitchState)
+  {
+    if (messageType == EpcX2Header::InitiatingMessage)
+      {
+        NS_LOG_LOGIC ("Recv X2 message: Switch State");
+
+        EpcX2SwitchStateHeader x2SwitchStateHeader;
+        packet->RemoveHeader (x2SwitchStateHeader);
+
+        EpcX2SapUser::SwitchStateParams params;
+        params.rnti = x2SwitchStateHeader.GetRnti ();
+        params.state = x2SwitchStateHeader.GetState ();
+
+        m_x2SapUser->RecvSwitchState (params);
+      }
+  }
+  else if (procedureCode == EpcX2Header::HandoverReconfiguration)
+  {
+    if (messageType == EpcX2Header::InitiatingMessage)
+      {
+        NS_LOG_LOGIC ("Recv X2 message: HANDOVER RECONFIGURATION ACK");
+
+        EpcX2HandoverReconfiguratioAckHeader x2HandoverReconfiguratioAckHeader;
+        packet->RemoveHeader (x2HandoverReconfiguratioAckHeader);
+
+        EpcX2SapUser::HandoverReconfigurationAckParams params;
+        params.rnti = x2HandoverReconfiguratioAckHeader.GetRnti ();
+
+        m_x2SapUser->RecvHandoverReconfigurationAck (params);
+      }
+  } else
     {
       NS_ASSERT_MSG (false, "ProcedureCode NOT SUPPORTED!!!");
     }
@@ -1055,6 +1113,176 @@ EpcX2::DoSendDlCqi (EpcX2SapProvider::DlCqiParams params)
   // Build the X2 packet
   Ptr<Packet> packet = Create <Packet> ();
   packet->AddHeader (x2DlCqiHeader);
+  packet->AddHeader (x2Header);
+  NS_LOG_INFO ("packetLen = " << packet->GetSize ());
+
+  // Send the X2 message through the socket
+  sourceSocket->SendTo (packet, 0, InetSocketAddress (targetIpAddr, m_x2cUdpPort));
+}
+
+void
+EpcX2::DoSendHandoverTrigger (EpcX2SapProvider::HandoverTriggerParams params)
+{
+  NS_LOG_FUNCTION (this);
+
+  NS_LOG_LOGIC ("sourceCellId = " << params.sourceCellId);
+  NS_LOG_LOGIC ("targetCellId = " << params.targetCellId);
+
+  NS_ASSERT_MSG (m_x2InterfaceSockets.find (params.targetCellId) != m_x2InterfaceSockets.end (),
+                 "Missing infos for targetCellId = " << params.targetCellId);
+  Ptr<X2IfaceInfo> socketInfo = m_x2InterfaceSockets [params.targetCellId];
+  Ptr<Socket> sourceSocket = socketInfo->m_localCtrlPlaneSocket;
+  Ipv4Address targetIpAddr = socketInfo->m_remoteIpAddr;
+
+  NS_LOG_LOGIC ("sourceSocket = " << sourceSocket);
+  NS_LOG_LOGIC ("targetIpAddr = " << targetIpAddr);
+
+  NS_LOG_INFO ("Send X2 message: HANDOVER TRIGGER");
+
+  // Build the X2 message
+  EpcX2HandoverTriggerHeader x2HandoverTriggerHeader;
+  x2HandoverTriggerHeader.SetRnti (params.rnti);
+  x2HandoverTriggerHeader.SetTargetCellId (params.hoTargetCellId);
+
+  EpcX2Header x2Header;
+  x2Header.SetMessageType (EpcX2Header::InitiatingMessage);
+  x2Header.SetProcedureCode (EpcX2Header::HandoverTrigger);
+  x2Header.SetLengthOfIes (x2HandoverTriggerHeader.GetLengthOfIes ());
+  x2Header.SetNumberOfIes (x2HandoverTriggerHeader.GetNumberOfIes ());
+
+  NS_LOG_INFO ("X2 header: " << x2Header);
+  NS_LOG_INFO ("X2 HandoverTrigger header: " << x2HandoverTriggerHeader);
+
+  // Build the X2 packet
+  Ptr<Packet> packet = Create <Packet> ();
+  packet->AddHeader (x2HandoverTriggerHeader);
+  packet->AddHeader (x2Header);
+  NS_LOG_INFO ("packetLen = " << packet->GetSize ());
+
+  // Send the X2 message through the socket
+  sourceSocket->SendTo (packet, 0, InetSocketAddress (targetIpAddr, m_x2cUdpPort));
+}
+
+void
+EpcX2::DoSendHandoverTriggerAck (EpcX2SapProvider::HandoverTriggerParams params)
+{
+  NS_LOG_FUNCTION (this);
+
+  NS_LOG_LOGIC ("sourceCellId = " << params.sourceCellId);
+  NS_LOG_LOGIC ("targetCellId = " << params.targetCellId);
+
+  NS_ASSERT_MSG (m_x2InterfaceSockets.find (params.targetCellId) != m_x2InterfaceSockets.end (),
+                 "Missing infos for targetCellId = " << params.targetCellId);
+  Ptr<X2IfaceInfo> socketInfo = m_x2InterfaceSockets [params.targetCellId];
+  Ptr<Socket> sourceSocket = socketInfo->m_localCtrlPlaneSocket;
+  Ipv4Address targetIpAddr = socketInfo->m_remoteIpAddr;
+
+  NS_LOG_LOGIC ("sourceSocket = " << sourceSocket);
+  NS_LOG_LOGIC ("targetIpAddr = " << targetIpAddr);
+
+  NS_LOG_INFO ("Send X2 message: HANDOVER TRIGGER ACK");
+
+  // Build the X2 message
+  EpcX2HandoverTriggerHeader x2HandoverTriggerHeader;
+  x2HandoverTriggerHeader.SetRnti (params.rnti);
+
+  EpcX2Header x2Header;
+  x2Header.SetMessageType (EpcX2Header::SuccessfulOutcome);
+  x2Header.SetProcedureCode (EpcX2Header::HandoverTrigger);
+  x2Header.SetLengthOfIes (x2HandoverTriggerHeader.GetLengthOfIes ());
+  x2Header.SetNumberOfIes (x2HandoverTriggerHeader.GetNumberOfIes ());
+
+  NS_LOG_INFO ("X2 header: " << x2Header);
+  NS_LOG_INFO ("X2 HandoverTrigger header: " << x2HandoverTriggerHeader);
+
+  // Build the X2 packet
+  Ptr<Packet> packet = Create <Packet> ();
+  packet->AddHeader (x2HandoverTriggerHeader);
+  packet->AddHeader (x2Header);
+  NS_LOG_INFO ("packetLen = " << packet->GetSize ());
+
+  // Send the X2 message through the socket
+  sourceSocket->SendTo (packet, 0, InetSocketAddress (targetIpAddr, m_x2cUdpPort));
+}
+
+void
+EpcX2::DoSendSwitchState (EpcX2SapProvider::SwitchStateParams params)
+{
+  NS_LOG_FUNCTION (this);
+
+  NS_LOG_LOGIC ("sourceCellId = " << params.sourceCellId);
+  NS_LOG_LOGIC ("targetCellId = " << params.targetCellId);
+
+  NS_ASSERT_MSG (m_x2InterfaceSockets.find (params.targetCellId) != m_x2InterfaceSockets.end (),
+                 "Missing infos for targetCellId = " << params.targetCellId);
+  Ptr<X2IfaceInfo> socketInfo = m_x2InterfaceSockets [params.targetCellId];
+  Ptr<Socket> sourceSocket = socketInfo->m_localCtrlPlaneSocket;
+  Ipv4Address targetIpAddr = socketInfo->m_remoteIpAddr;
+
+  NS_LOG_LOGIC ("sourceSocket = " << sourceSocket);
+  NS_LOG_LOGIC ("targetIpAddr = " << targetIpAddr);
+
+  NS_LOG_INFO ("Send X2 message: SWITCH STATE");
+
+  // Build the X2 message
+  EpcX2SwitchStateHeader x2SwitchStateHeader;
+  x2SwitchStateHeader.SetRnti (params.rnti);
+  x2SwitchStateHeader.SetState (params.state);
+
+  EpcX2Header x2Header;
+  x2Header.SetMessageType (EpcX2Header::InitiatingMessage);
+  x2Header.SetProcedureCode (EpcX2Header::SwitchState);
+  x2Header.SetLengthOfIes (x2SwitchStateHeader.GetLengthOfIes ());
+  x2Header.SetNumberOfIes (x2SwitchStateHeader.GetNumberOfIes ());
+
+  NS_LOG_INFO ("X2 header: " << x2Header);
+  NS_LOG_INFO ("X2 SwitchState header: " << x2SwitchStateHeader);
+
+  // Build the X2 packet
+  Ptr<Packet> packet = Create <Packet> ();
+  packet->AddHeader (x2SwitchStateHeader);
+  packet->AddHeader (x2Header);
+  NS_LOG_INFO ("packetLen = " << packet->GetSize ());
+
+  // Send the X2 message through the socket
+  sourceSocket->SendTo (packet, 0, InetSocketAddress (targetIpAddr, m_x2cUdpPort));
+}
+
+void
+EpcX2::DoSendHandoverReconfigurationAck (EpcX2SapProvider::HandoverReconfigurationAckParams params)
+{
+  NS_LOG_FUNCTION (this);
+
+  NS_LOG_LOGIC ("sourceCellId = " << params.sourceCellId);
+  NS_LOG_LOGIC ("targetCellId = " << params.targetCellId);
+
+  NS_ASSERT_MSG (m_x2InterfaceSockets.find (params.targetCellId) != m_x2InterfaceSockets.end (),
+                 "Missing infos for targetCellId = " << params.targetCellId);
+  Ptr<X2IfaceInfo> socketInfo = m_x2InterfaceSockets [params.targetCellId];
+  Ptr<Socket> sourceSocket = socketInfo->m_localCtrlPlaneSocket;
+  Ipv4Address targetIpAddr = socketInfo->m_remoteIpAddr;
+
+  NS_LOG_LOGIC ("sourceSocket = " << sourceSocket);
+  NS_LOG_LOGIC ("targetIpAddr = " << targetIpAddr);
+
+  NS_LOG_INFO ("Send X2 message: HANDOVER RECONFIGURATION ACK");
+
+  // Build the X2 message
+  EpcX2HandoverReconfiguratioAckHeader x2HandoverReconfiguratioAckHeader;
+  x2HandoverReconfiguratioAckHeader.SetRnti (params.rnti);
+
+  EpcX2Header x2Header;
+  x2Header.SetMessageType (EpcX2Header::InitiatingMessage);
+  x2Header.SetProcedureCode (EpcX2Header::HandoverReconfiguration);
+  x2Header.SetLengthOfIes (x2HandoverReconfiguratioAckHeader.GetLengthOfIes ());
+  x2Header.SetNumberOfIes (x2HandoverReconfiguratioAckHeader.GetNumberOfIes ());
+
+  NS_LOG_INFO ("X2 header: " << x2Header);
+  NS_LOG_INFO ("X2 SwitchState header: " << x2HandoverReconfiguratioAckHeader);
+
+  // Build the X2 packet
+  Ptr<Packet> packet = Create <Packet> ();
+  packet->AddHeader (x2HandoverReconfiguratioAckHeader);
   packet->AddHeader (x2Header);
   NS_LOG_INFO ("packetLen = " << packet->GetSize ());
 

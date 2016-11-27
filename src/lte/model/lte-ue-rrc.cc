@@ -913,42 +913,29 @@ LteUeRrc::DoRecvRrcConnectionReconfiguration (LteRrcSap::RrcConnectionReconfigur
       if (msg.haveMobilityControlInfo)
         {
           NS_LOG_INFO ("haveMobilityControlInfo == true");
-          SwitchToState (CONNECTED_HANDOVER);
           const LteRrcSap::MobilityControlInfo& mci = msg.mobilityControlInfo;
           m_handoverStartTrace (m_imsi, m_cellId, m_rnti, mci.targetPhysCellId);
-          m_cmacSapProvider->Reset ();
-          m_cphySapProvider->Reset ();
-          m_cellId = mci.targetPhysCellId;
+          m_smallCmacSapProvider->Reset ();
+          m_smallCphySapProvider->Reset ();
+          m_smallCellId = mci.targetPhysCellId;
           NS_ASSERT (mci.haveCarrierFreq);
           NS_ASSERT (mci.haveCarrierBandwidth);
-          m_cphySapProvider->SynchronizeWithEnb (m_cellId, mci.carrierFreq.dlCarrierFreq);
-          m_cphySapProvider->SetDlBandwidth ( mci.carrierBandwidth.dlBandwidth);
-          m_cphySapProvider->ConfigureUplink (mci.carrierFreq.ulCarrierFreq, mci.carrierBandwidth.ulBandwidth); 
+          m_smallCphySapProvider->SynchronizeWithEnb (m_smallCellId, mci.carrierFreq.dlCarrierFreq);
+          m_smallCphySapProvider->SetDlBandwidth ( mci.carrierBandwidth.dlBandwidth);
+          m_smallCphySapProvider->ConfigureUplink (mci.carrierFreq.ulCarrierFreq, mci.carrierBandwidth.ulBandwidth); 
           m_rnti = msg.mobilityControlInfo.newUeIdentity;
-          m_srb0->m_rlc->SetRnti (m_rnti);
           NS_ASSERT_MSG (mci.haveRachConfigDedicated, "handover is only supported with non-contention-based random access procedure");
-          m_cmacSapProvider->StartNonContentionBasedRandomAccessProcedure (m_rnti, mci.rachConfigDedicated.raPreambleIndex, mci.rachConfigDedicated.raPrachMaskIndex);
-          m_cphySapProvider->SetRnti (m_rnti);
-          m_lastRrcTransactionIdentifier = msg.rrcTransactionIdentifier;
+          m_smallCmacSapProvider->SetRnti (m_rnti);
+          m_smallCphySapProvider->SetRnti (m_rnti);
           NS_ASSERT (msg.haveRadioResourceConfigDedicated);
 
-          // we re-establish SRB1 by creating a new entity
-          // note that we can't dispose the old entity now, because
-          // it's in the current stack, so we would corrupt the stack
-          // if we did so. Hence we schedule it for later disposal
-          m_srb1Old = m_srb1;
-          Simulator::ScheduleNow (&LteUeRrc::DisposeOldSrb1, this);
-          m_srb1 = 0; // new instance will be be created within ApplyRadioResourceConfigDedicated
+          m_smallDrbMap.clear (); // dispose all DRBs
+          ApplySmallConnectionSetup (msg.radioResourceConfigDedicated);
 
-          m_drbMap.clear (); // dispose all DRBs
-          ApplyRadioResourceConfigDedicated (msg.radioResourceConfigDedicated);
-
-          if (msg.haveMeasConfig)
-            {
-              ApplyMeasConfig (msg.measConfig);
-            }
-          // RRC connection reconfiguration completed will be sent
-          // after handover is complete
+          LteRrcSap::RrcConnectionReconfigurationCompleted msg1;
+          msg1.rrcTransactionIdentifier = msg.rrcTransactionIdentifier;
+          m_rrcSapUser->SendRrcConnectionReconfigurationCompleted (msg1);
+          m_handoverEndOkTrace (m_imsi, m_cellId, m_rnti);
         }
       else
         {

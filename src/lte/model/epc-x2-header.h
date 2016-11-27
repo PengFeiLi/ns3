@@ -65,7 +65,10 @@ public:
     ConnectionRequest       = 12,
     ConnectionCompleted     = 13,
     OnOffRequest            = 14,
-    DlCqi                   = 15
+    DlCqi                   = 15,
+    HandoverTrigger         = 16,
+    SwitchState             = 17,
+    HandoverReconfiguration = 18
   };
 
   enum TypeOfMessage_t {
@@ -494,6 +497,92 @@ private:
   uint16_t          m_srcCellId;
   std::vector<uint16_t> m_rntis;
   std::vector<uint8_t> m_cqis;
+};
+
+class EpcX2HandoverTriggerHeader : public Header
+{
+public:
+  EpcX2HandoverTriggerHeader ();
+  virtual ~EpcX2HandoverTriggerHeader ();
+
+  static TypeId GetTypeId (void);
+  virtual TypeId GetInstanceTypeId (void) const;
+  virtual uint32_t GetSerializedSize (void) const;
+  virtual void Serialize (Buffer::Iterator start) const;
+  virtual uint32_t Deserialize (Buffer::Iterator start);
+  virtual void Print (std::ostream &os) const;
+
+  void SetTargetCellId (uint16_t cellId);
+  uint16_t GetTargetCellId () const;
+
+  void SetRnti (uint16_t rnti);
+  uint16_t GetRnti () const;
+
+  uint32_t GetLengthOfIes () const;
+  uint32_t GetNumberOfIes () const;
+
+private:
+  uint32_t          m_numberOfIes;
+  uint32_t          m_headerLength;
+
+  uint16_t          m_targetCellId;
+  uint16_t          m_rnti;
+};
+
+class EpcX2SwitchStateHeader : public Header
+{
+public:
+  EpcX2SwitchStateHeader ();
+  virtual ~EpcX2SwitchStateHeader ();
+
+  static TypeId GetTypeId (void);
+  virtual TypeId GetInstanceTypeId (void) const;
+  virtual uint32_t GetSerializedSize (void) const;
+  virtual void Serialize (Buffer::Iterator start) const;
+  virtual uint32_t Deserialize (Buffer::Iterator start);
+  virtual void Print (std::ostream &os) const;
+
+  void SetRnti (uint16_t rnti);
+  uint16_t GetRnti () const;
+
+  void SetState (uint8_t state);
+  uint16_t GetState () const;
+
+  uint32_t GetLengthOfIes () const;
+  uint32_t GetNumberOfIes () const;
+
+private:
+  uint32_t          m_numberOfIes;
+  uint32_t          m_headerLength;
+
+  uint16_t          m_state;
+  uint16_t          m_rnti;
+};
+
+class EpcX2HandoverReconfiguratioAckHeader : public Header
+{
+public:
+  EpcX2HandoverReconfiguratioAckHeader ();
+  virtual ~EpcX2HandoverReconfiguratioAckHeader ();
+
+  static TypeId GetTypeId (void);
+  virtual TypeId GetInstanceTypeId (void) const;
+  virtual uint32_t GetSerializedSize (void) const;
+  virtual void Serialize (Buffer::Iterator start) const;
+  virtual uint32_t Deserialize (Buffer::Iterator start);
+  virtual void Print (std::ostream &os) const;
+
+  void SetRnti (uint16_t rnti);
+  uint16_t GetRnti () const;
+
+  uint32_t GetLengthOfIes () const;
+  uint32_t GetNumberOfIes () const;
+
+private:
+  uint32_t          m_numberOfIes;
+  uint32_t          m_headerLength;
+
+  uint16_t          m_rnti;
 };
 
 } // namespace ns3

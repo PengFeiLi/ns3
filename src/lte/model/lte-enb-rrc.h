@@ -509,6 +509,7 @@ private:
   uint16_t m_smallCellId;
   State m_smallState;
   uint8_t m_smallSetupTid;
+  uint8_t m_lastHandoverTransactionIdentifier;
 
   void SmallSwitchToState (State newState);
   void DoSmallConnectionSetupCompleted (LteRrcSap::RrcConnectionSetupCompleted msg);
@@ -520,6 +521,10 @@ public:
   void RecvRrcScInfoRequest (LteRrcSap::RrcScInfoRequest msg);
 
   void RecvSmallRrcd (LteRrcSap::RadioResourceConfigDedicated rrcd);
+  LteRrcSap::RrcConnectionReconfiguration GetSmallRrcConnectionReconfigurationForHandover ();
+
+  void HandoverTrigger (uint16_t targetCellId);
+  void RecvHandoverTriggerAck ();
 
 /******************** only available on the small cell side ***********************/
 private:
@@ -529,6 +534,10 @@ public:
   void SmallInitialize (uint16_t cellId, uint64_t imsi);
 
   void RecvX2ConnectionSetupCompleted ();
+
+  void RecvSwitchState (State newState);
+
+  void RecvHandoverReconfigurationAck ();
 
 }; // end of `class UeManager`
 
@@ -1329,6 +1338,8 @@ private:
 
   void DoRecvDlCqi (EpcX2SapUser::DlCqiParams params);
 
+  void DoRecvHandoverTriggerAck (EpcX2SapUser::HandoverTriggerParams params);
+
 public:
   void RegisterSmallCell (uint16_t cellId);
 
@@ -1352,6 +1363,12 @@ private:
 
   void DoReportDlCqi (CqiListElement_s cqi);
   void DoSendDlCqi ();
+
+  void DoRecvHandoverTrigger (EpcX2SapUser::HandoverTriggerParams params);
+
+  void DoRecvSwitchState (EpcX2SapUser::SwitchStateParams params);
+
+  void DoRecvHandoverReconfigurationAck (EpcX2SapUser::HandoverReconfigurationAckParams params);
 
 }; // end of `class LteEnbRrc`
 

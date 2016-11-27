@@ -2182,5 +2182,307 @@ EpcX2DlCqiHeader::GetNumberOfIes () const
   return m_numberOfIes;
 }
 
+//////////////////////////////////////////////////////////////////
+
+NS_OBJECT_ENSURE_REGISTERED (EpcX2HandoverTriggerHeader);
+
+EpcX2HandoverTriggerHeader::EpcX2HandoverTriggerHeader ()
+  : m_numberOfIes (2),
+    m_headerLength (4)
+{
+}
+
+EpcX2HandoverTriggerHeader::~EpcX2HandoverTriggerHeader ()
+{
+  m_numberOfIes = 0;
+  m_headerLength = 0;
+}
+
+TypeId
+EpcX2HandoverTriggerHeader::GetTypeId (void)
+{
+  static TypeId tid = TypeId ("ns3::EpcX2HandoverTriggerHeader")
+    .SetParent<Header> ()
+    .SetGroupName ("Lte")
+    .AddConstructor<EpcX2HandoverTriggerHeader> ()
+  ;
+  return tid;
+}
+
+TypeId
+EpcX2HandoverTriggerHeader::GetInstanceTypeId (void) const
+{
+  return GetTypeId ();
+}
+
+uint32_t
+EpcX2HandoverTriggerHeader::GetSerializedSize (void) const
+{
+  return m_headerLength;
+}
+
+void
+EpcX2HandoverTriggerHeader::Serialize (Buffer::Iterator start) const
+{
+  Buffer::Iterator i = start;
+
+  i.WriteHtonU16 (m_targetCellId);
+
+  i.WriteHtonU16 (m_rnti);
+}
+
+uint32_t
+EpcX2HandoverTriggerHeader::Deserialize (Buffer::Iterator start)
+{
+  Buffer::Iterator i = start;
+
+  m_targetCellId = i.ReadNtohU16 ();
+
+  m_rnti = i.ReadNtohU16 ();
+
+  m_numberOfIes = 2;
+  m_headerLength = 4;
+
+  return GetSerializedSize ();
+}
+
+void
+EpcX2HandoverTriggerHeader::Print (std::ostream &os) const
+{
+  os << " targetCellId " << m_targetCellId << " RNTI " << m_rnti;
+}
+
+void
+EpcX2HandoverTriggerHeader::SetTargetCellId (uint16_t cellId)
+{
+  m_targetCellId = cellId;
+}
+
+uint16_t
+EpcX2HandoverTriggerHeader::GetTargetCellId () const
+{
+  return m_targetCellId;
+}
+
+void
+EpcX2HandoverTriggerHeader::SetRnti (uint16_t rnti)
+{
+  m_rnti = rnti;
+}
+
+uint16_t
+EpcX2HandoverTriggerHeader::GetRnti () const
+{
+  return m_rnti;
+}
+
+uint32_t
+EpcX2HandoverTriggerHeader::GetLengthOfIes () const
+{
+  return m_headerLength;
+}
+
+uint32_t
+EpcX2HandoverTriggerHeader::GetNumberOfIes () const
+{
+  return m_numberOfIes;
+}
+
+//////////////////////////////////////////////////////////////////
+
+NS_OBJECT_ENSURE_REGISTERED (EpcX2SwitchStateHeader);
+
+EpcX2SwitchStateHeader::EpcX2SwitchStateHeader ()
+  : m_numberOfIes (2),
+    m_headerLength (3)
+{
+}
+
+EpcX2SwitchStateHeader::~EpcX2SwitchStateHeader ()
+{
+  m_numberOfIes = 0;
+  m_headerLength = 0;
+}
+
+TypeId
+EpcX2SwitchStateHeader::GetTypeId (void)
+{
+  static TypeId tid = TypeId ("ns3::EpcX2SwitchStateHeader")
+    .SetParent<Header> ()
+    .SetGroupName ("Lte")
+    .AddConstructor<EpcX2SwitchStateHeader> ()
+  ;
+  return tid;
+}
+
+TypeId
+EpcX2SwitchStateHeader::GetInstanceTypeId (void) const
+{
+  return GetTypeId ();
+}
+
+uint32_t
+EpcX2SwitchStateHeader::GetSerializedSize (void) const
+{
+  return m_headerLength;
+}
+
+void
+EpcX2SwitchStateHeader::Serialize (Buffer::Iterator start) const
+{
+  Buffer::Iterator i = start;
+
+  i.WriteHtonU16 (m_rnti);
+
+  i.WriteU8 (m_state);
+}
+
+uint32_t
+EpcX2SwitchStateHeader::Deserialize (Buffer::Iterator start)
+{
+  Buffer::Iterator i = start;
+
+  m_rnti = i.ReadNtohU16 ();
+
+  m_state = i.ReadU8 ();
+
+  m_numberOfIes = 2;
+  m_headerLength = 3;
+
+  return GetSerializedSize ();
+}
+
+void
+EpcX2SwitchStateHeader::Print (std::ostream &os) const
+{
+  os << "EpcX2SwitchStateHeader";
+}
+
+void
+EpcX2SwitchStateHeader::SetRnti (uint16_t rnti)
+{
+  m_rnti = rnti;
+}
+
+uint16_t
+EpcX2SwitchStateHeader::GetRnti () const
+{
+  return m_rnti;
+}
+
+void
+EpcX2SwitchStateHeader::SetState (uint8_t state)
+{
+  m_state = state;
+}
+
+uint16_t
+EpcX2SwitchStateHeader::GetState () const
+{
+  return m_state;
+}
+
+uint32_t
+EpcX2SwitchStateHeader::GetLengthOfIes () const
+{
+  return m_headerLength;
+}
+
+uint32_t
+EpcX2SwitchStateHeader::GetNumberOfIes () const
+{
+  return m_numberOfIes;
+}
+
+//////////////////////////////////////////////////////////////////
+
+NS_OBJECT_ENSURE_REGISTERED (EpcX2HandoverReconfiguratioAckHeader);
+
+EpcX2HandoverReconfiguratioAckHeader::EpcX2HandoverReconfiguratioAckHeader ()
+  : m_numberOfIes (1),
+    m_headerLength (2)
+{
+}
+
+EpcX2HandoverReconfiguratioAckHeader::~EpcX2HandoverReconfiguratioAckHeader ()
+{
+  m_numberOfIes = 0;
+  m_headerLength = 0;
+}
+
+TypeId
+EpcX2HandoverReconfiguratioAckHeader::GetTypeId (void)
+{
+  static TypeId tid = TypeId ("ns3::EpcX2HandoverReconfiguratioAckHeader")
+    .SetParent<Header> ()
+    .SetGroupName ("Lte")
+    .AddConstructor<EpcX2HandoverReconfiguratioAckHeader> ()
+  ;
+  return tid;
+}
+
+TypeId
+EpcX2HandoverReconfiguratioAckHeader::GetInstanceTypeId (void) const
+{
+  return GetTypeId ();
+}
+
+uint32_t
+EpcX2HandoverReconfiguratioAckHeader::GetSerializedSize (void) const
+{
+  return m_headerLength;
+}
+
+void
+EpcX2HandoverReconfiguratioAckHeader::Serialize (Buffer::Iterator start) const
+{
+  Buffer::Iterator i = start;
+
+  i.WriteHtonU16 (m_rnti);
+}
+
+uint32_t
+EpcX2HandoverReconfiguratioAckHeader::Deserialize (Buffer::Iterator start)
+{
+  Buffer::Iterator i = start;
+
+  m_rnti = i.ReadNtohU16 ();
+
+
+  m_numberOfIes = 1;
+  m_headerLength = 2;
+
+  return GetSerializedSize ();
+}
+
+void
+EpcX2HandoverReconfiguratioAckHeader::Print (std::ostream &os) const
+{
+  os << "EpcX2HandoverReconfiguratioAckHeader";
+}
+
+void
+EpcX2HandoverReconfiguratioAckHeader::SetRnti (uint16_t rnti)
+{
+  m_rnti = rnti;
+}
+
+uint16_t
+EpcX2HandoverReconfiguratioAckHeader::GetRnti () const
+{
+  return m_rnti;
+}
+
+uint32_t
+EpcX2HandoverReconfiguratioAckHeader::GetLengthOfIes () const
+{
+  return m_headerLength;
+}
+
+uint32_t
+EpcX2HandoverReconfiguratioAckHeader::GetNumberOfIes () const
+{
+  return m_numberOfIes;
+}
 
 } // namespace ns3
