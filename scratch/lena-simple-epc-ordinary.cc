@@ -121,6 +121,7 @@ main (int argc, char *argv[])
   uint32_t macroEnbs = 1;
   uint32_t picoEnbs = macroEnbs * 4;
   uint32_t numberOfNodes = picoEnbs;
+  uint32_t numberOfUes = 200;
   uint32_t enbInterDistance = 500;
   uint32_t enbRadius = enbInterDistance/2;
   double enbYDis = std::sqrt(enbInterDistance*enbInterDistance-enbRadius*enbRadius);
@@ -129,6 +130,7 @@ main (int argc, char *argv[])
   // Command line arguments
   CommandLine cmd;
   cmd.AddValue("simTime", "Total duration of the simulation [s])", simTime);
+  cmd.AddValue("numberOfUes", "Number of Ues", numberOfUes);
   cmd.AddValue("interPacketInterval", "Inter packet interval [ms])", interPacketInterval);
   cmd.Parse(argc, argv);
 
@@ -174,7 +176,7 @@ main (int argc, char *argv[])
 
   enbNodes.Create(macroEnbs);// * enbSectors);
   picoNodes.Create(numberOfNodes);
-  ueNodes.Create(numberOfNodes);
+  ueNodes.Create(numberOfUes);
 
   //set mobility of macro cells
   Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator> ();
@@ -193,6 +195,7 @@ main (int argc, char *argv[])
   mobility.Install (ueNodes);
 
   //Install macro cells
+  Config::SetDefault ("ns3::LteEnbRrc::SrsPeriodicity", UintegerValue(320));
   Config::SetDefault ("ns3::LteEnbPhy::TxPower", DoubleValue (46));
   // lteHelper->SetEnbAntennaModelType ("ns3::ParabolicAntennaModel");//抛物面天线模型
   // lteHelper->SetEnbAntennaModelAttribute ("Beamwidth", DoubleValue (70));//DoubleValue (70)

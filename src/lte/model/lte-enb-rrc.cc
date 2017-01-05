@@ -1119,7 +1119,7 @@ UeManager::DoRecvSmallCellSearchMeasurements (LteRrcSap::MeasResults measResults
 
   uint16_t maxCellId = 0, resCellId;
   double maxRsrp = -std::numeric_limits<double>::infinity ();
-  uint16_t minCount = 0;
+  // uint16_t minCount = 0;
   std::list<LteRrcSap::MeasResultEutra>::iterator mreIt;
 
   for (mreIt = measResults.measResultListEutra.begin ();
@@ -1135,7 +1135,7 @@ UeManager::DoRecvSmallCellSearchMeasurements (LteRrcSap::MeasResults measResults
       }
     }
 
-  minCount = m_rrc->GetUeOnSmallCell (maxCellId);
+  // minCount = m_rrc->GetUeOnSmallCell (maxCellId);
   resCellId = maxCellId;
   // for (mreIt = measResults.measResultListEutra.begin ();
   //     mreIt != measResults.measResultListEutra.end (); ++mreIt)

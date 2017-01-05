@@ -3371,10 +3371,10 @@ LteUeRrc::DoSendRrcSmallConnectionRequest ()
   msg.cellId = m_smallCellId;
   m_rrcSapUser->SendRrcSmallConnectionRequest (msg); 
 
-  m_smallConnectionTimeout = Simulator::Schedule (
-                                  m_t300,
-                                  &LteUeRrc::SmallConnectionTimeout,
-                                  this);
+  // m_smallConnectionTimeout = Simulator::Schedule (
+  //                                 m_t300,
+  //                                 &LteUeRrc::SmallConnectionTimeout,
+  //                                 this);
 }
 
 void
