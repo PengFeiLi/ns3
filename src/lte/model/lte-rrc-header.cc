@@ -34,7 +34,7 @@
 #define MAX_OBJECT_ID 32
 #define MAX_MEAS_ID 32
 #define MAX_CELL_MEAS 32
-#define MAX_CELL_REPORT 8
+#define MAX_CELL_REPORT 64 
 
 namespace ns3 {
 
