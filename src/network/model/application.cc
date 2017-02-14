@@ -93,12 +93,26 @@ void
 Application::DoInitialize (void)
 {
   NS_LOG_FUNCTION (this);
-  m_startEvent = Simulator::Schedule (m_startTime, &Application::StartApplication, this);
-  if (m_stopTime != TimeStep (0))
-    {
-      m_stopEvent = Simulator::Schedule (m_stopTime, &Application::StopApplication, this);
-    }
+  // m_startEvent = Simulator::Schedule (m_startTime, &Application::StartApplication, this);
+  // if (m_stopTime != TimeStep (0))
+  //   {
+  //     m_stopEvent = Simulator::Schedule (m_stopTime, &Application::StopApplication, this);
+  //   }
   Object::DoInitialize ();
+}
+
+void
+Application::Start ()
+{
+  NS_LOG_FUNCTION (this);
+  m_startEvent = Simulator::Schedule (Seconds (0.0), &Application::StartApplication, this);
+}
+
+void
+Application::Stop ()
+{
+  NS_LOG_FUNCTION (this);
+  m_stopEvent = Simulator::Schedule (Seconds (0.0), &Application::StopApplication, this);
 }
 
 Ptr<Node> Application::GetNode () const

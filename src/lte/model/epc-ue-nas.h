@@ -50,6 +50,7 @@ public:
   virtual void DoDispose (void);
   static TypeId GetTypeId (void);
 
+  void Start ();
 
   /** 
    * 

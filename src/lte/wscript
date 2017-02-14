@@ -53,6 +53,7 @@ def build(bld):
         'helper/radio-environment-map-helper.cc',
         'helper/lte-hex-grid-enb-topology-helper.cc',
         'helper/lte-global-pathloss-database.cc',
+        'helper/lte-ue-helper.cc',
         'model/rem-spectrum-phy.cc',
         'model/ff-mac-common.cc',
         'model/ff-mac-csched-sap.cc',
@@ -125,6 +126,7 @@ def build(bld):
         'model/lte-sleep-algorithm.cc',
         'model/no-op-sleep-algorithm.cc',
         'model/swes-sleep-algorithm.cc',
+        'model/set-cover-sleep-algorithm.cc'
         ]
 
     module_test = bld.create_ns3_module_test_library('lte')
@@ -232,6 +234,7 @@ def build(bld):
         'helper/radio-environment-map-helper.h',
         'helper/lte-hex-grid-enb-topology-helper.h',
         'helper/lte-global-pathloss-database.h',
+        'helper/lte-ue-helper.h',
         'model/rem-spectrum-phy.h',
         'model/ff-mac-common.h',
         'model/ff-mac-csched-sap.h',
@@ -299,11 +302,12 @@ def build(bld):
         'model/lte-ffr-soft-algorithm.h',
         'model/lte-ffr-enhanced-algorithm.h',
         'model/lte-ffr-distributed-algorithm.h',     
-		'model/lte-ue-power-control.h',           
+        'model/lte-ue-power-control.h',           
         'model/lte-sleep-algorithm.h',
         'model/no-op-sleep-algorithm.h',
         'model/lte-sleep-management-sap.h',
         'model/swes-sleep-algorithm.h',
+        'model/set-cover-sleep-algorithm.h'
         ]
 
     if (bld.env['ENABLE_EMU']):

@@ -104,6 +104,9 @@ public:
    */
   void SetNode (Ptr<Node> node);
 
+  void Start ();
+  void Stop ();
+
 private:
   /**
    * \brief Application specific startup code

@@ -970,6 +970,9 @@ public:
   void SetSmallLteUeCmacSapProvider (LteUeCmacSapProvider* s);
   void SetSmallLteMacSapProvider (LteMacSapProvider * s);
 
+  void Start ();
+  void Stop ();
+
 private:
   State m_smallState;
   uint16_t m_smallCellId;
@@ -1013,6 +1016,8 @@ private:
   std::map<uint8_t, uint8_t> m_smallBid2DrbidMap;
 
   Path m_path;
+
+  EventId m_switchPathEvent;
 
   //control和data时分复用(ms)
   uint32_t m_period;

@@ -56,6 +56,8 @@ protected:
 
     virtual void DoReportUeMeas (uint16_t rnti, LteRrcSap::MeasResults measResults);
 
+    virtual void DoReportDlCqi (uint16_t cellId, EpcX2Sap::DlCqiParams dlCqiparams);
+
 private:
     LteSleepManagementSapUser* m_sleepManagementSapUser;
 

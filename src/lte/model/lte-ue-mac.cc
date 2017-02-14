@@ -398,7 +398,7 @@ LteUeMac::SendRaPreamble (bool contention)
   // 3GPP 36.321 5.1.4 
   Time raWindowBegin = MilliSeconds (3); 
   Time raWindowEnd = MilliSeconds (3 + m_rachConfig.raResponseWindowSize);
-  Simulator::Schedule (raWindowBegin, &LteUeMac::StartWaitingForRaResponse, this);
+  m_waitRarEvent = Simulator::Schedule (raWindowBegin, &LteUeMac::StartWaitingForRaResponse, this);
   m_noRaResponseReceivedEvent = Simulator::Schedule (raWindowEnd, &LteUeMac::RaResponseTimeout, this, contention);
 }
 
@@ -540,6 +540,51 @@ LteUeMac::DoReset ()
   m_rachConfigured = false;
   m_freshUlBsr = false;
   m_ulBsrReceived.clear ();
+}
+
+void
+LteUeMac::Start ()
+{
+  NS_LOG_FUNCTION (this);
+  m_bsrPeriodicity = MilliSeconds (1);
+  m_bsrLast = MilliSeconds (0);
+  m_freshUlBsr = false;
+  m_harqProcessId = 0;
+  m_rnti = 0;
+  m_rachConfigured = false;
+  m_waitingForRaResponse = false;
+
+  m_miUlHarqProcessesPacket.resize (HARQ_PERIOD);
+  for (uint8_t i = 0; i < m_miUlHarqProcessesPacket.size (); i++)
+    {
+      Ptr<PacketBurst> pb = CreateObject <PacketBurst> ();
+      m_miUlHarqProcessesPacket.at (i) = pb;
+    }
+  m_miUlHarqProcessesPacketTimer.resize (HARQ_PERIOD, 0);
+
+  std::map <uint8_t, LcInfo>::iterator it = m_lcInfoMap.begin ();
+  while (it != m_lcInfoMap.end ())
+    {
+      // don't delete CCCH)
+      if (it->first == 0)
+        {          
+          ++it;
+        }
+      else
+        {
+          // note: use of postfix operator preserves validity of iterator
+          m_lcInfoMap.erase (it++);
+        }
+    }
+  m_ulBsrReceived.clear ();
+}
+
+void
+LteUeMac::Stop ()
+{
+  NS_LOG_FUNCTION (this);
+  m_waitRarEvent.Cancel ();
+  m_noRaResponseReceivedEvent.Cancel ();
 }
 
 void

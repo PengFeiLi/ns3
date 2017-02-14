@@ -147,6 +147,24 @@ LteUeNetDevice::DoDispose (void)
 }
 
 void
+LteUeNetDevice::Reset () {
+  NS_LOG_FUNCTION (this);
+  m_targetEnb = 0;
+  m_mac->Dispose ();
+  m_mac = 0;
+  m_rrc->Dispose ();
+  m_rrc = 0;
+  m_phy->Dispose ();
+  m_phy = 0;
+  m_nas->Dispose ();
+  m_nas = 0;
+  m_smallPhy->Dispose ();
+  m_smallPhy = 0;
+  m_smallMac->Dispose ();
+  m_smallMac = 0;
+}
+
+void
 LteUeNetDevice::UpdateConfig (void)
 {
   NS_LOG_FUNCTION (this);
@@ -168,6 +186,18 @@ LteUeNetDevice::UpdateConfig (void)
     }
 }
 
+void
+LteUeNetDevice::Update () {
+  NS_LOG_FUNCTION (this);
+  UpdateConfig ();
+  m_phy->Initialize ();
+  m_mac->Initialize ();
+
+  m_smallPhy->Initialize ();
+  m_smallMac->Initialize ();
+
+  m_rrc->Initialize ();
+}
 
 
 Ptr<LteUeMac>

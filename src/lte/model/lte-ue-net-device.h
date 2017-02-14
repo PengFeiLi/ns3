@@ -124,6 +124,10 @@ public:
    */
   Ptr<LteEnbNetDevice> GetTargetEnb (void);
 
+  void Reset();
+
+  void Update ();
+
 
 protected:
   // inherited from Object

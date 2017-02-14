@@ -158,6 +158,13 @@ private:
   uint32_t m_subframeNo;
   uint8_t m_raRnti;
   bool m_waitingForRaResponse;
+
+private:
+  EventId m_waitRarEvent;
+
+public:
+  void Start ();
+  void Stop ();
 };
 
 } // namespace ns3

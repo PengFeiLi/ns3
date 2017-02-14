@@ -67,6 +67,12 @@ EpcUeNas::EpcUeNas ()
   m_asSapUser = new MemberLteAsSapUser<EpcUeNas> (this);
 }
 
+void
+EpcUeNas::Start ()
+{
+  m_state = OFF;
+  m_bidCounter = 0;
+}
 
 EpcUeNas::~EpcUeNas ()
 {

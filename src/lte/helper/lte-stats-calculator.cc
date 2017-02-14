@@ -168,7 +168,11 @@ LteStatsCalculator::FindImsiFromUePhy (std::string path)
   // /NodeList/#NodeId/DeviceList/#DeviceId/LteUePhy
 
   // We retrieve the UeInfo associated to the C-RNTI and perform the IMSI lookup
-  std::string ueRlcPath = path.substr (0, path.find ("/LteUePhy"));
+  std::string ueRlcPath;
+  if (path.find ("/LteUePhy") != std::string::npos)
+    ueRlcPath = path.substr (0, path.find ("/LteUePhy"));
+  else
+    ueRlcPath = path.substr (0, path.find ("/SmallLteUePhy"));
   ueRlcPath += "/LteUeRrc";
   Config::MatchContainer match = Config::LookupMatches (ueRlcPath);
 
@@ -276,7 +280,11 @@ LteStatsCalculator::FindImsiForEnb (std::string path, uint16_t rnti)
     }
   else if (path.find ("/UlPhyReception"))
     {
-      std::string p = path.substr (0, path.find ("/LteUePhy"));
+      std::string p;
+      if (path.find ("/LteUePhy") != std::string::npos)
+        p = path.substr (0, path.find ("/LteUePhy"));
+      else
+        p = path.substr (0, path.find ("/SmallLteUePhy"));
       imsi = FindImsiFromLteNetDevice (p);
       NS_LOG_LOGIC ("FindImsiForEnb[Rx]: " << path << ", " << rnti << ", " << imsi);
     }
@@ -291,7 +299,11 @@ LteStatsCalculator::FindImsiForUe (std::string path, uint16_t rnti)
   uint64_t imsi = 0;
   if (path.find ("/UlPhyTransmission"))
     {
-      std::string p = path.substr (0, path.find ("/LteUePhy"));
+      std::string p;
+      if (path.find ("/LteUePhy") != std::string::npos)
+        p = path.substr (0, path.find ("/LteUePhy"));
+      else
+        p = path.substr (0, path.find ("/SmallLteUePhy"));
       imsi = FindImsiFromLteNetDevice (p);
       NS_LOG_LOGIC ("FindImsiForUe[Tx]: " << path << ", " << rnti << ", " << imsi);
     }

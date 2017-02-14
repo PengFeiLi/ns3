@@ -85,7 +85,7 @@ static GlobalValue g_schedTypeImpl = GlobalValue ("SchedulerType",
 static void
 TimePrinter (std::ostream &os)
 {
-  os << std::setiosflags (std::ios::fixed) << std::setprecision (6) << Simulator::Now ().GetSeconds () << "s";
+  os << Simulator::Now ().GetSeconds () << "s"; //std::setiosflags (std::ios::fixed) << std::setprecision (6) <<
 }
 
 /**

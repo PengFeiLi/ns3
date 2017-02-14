@@ -41,7 +41,8 @@
 #include <ns3/lte-rlc-am.h>
 #include <ns3/lte-pdcp.h>
 
-
+#include <algorithm>
+#include <iterator>
 
 
 namespace ns3 {
@@ -159,6 +160,7 @@ UeManager::UeManager (Ptr<LteEnbRrc> rrc, uint16_t rnti, State s)
 
   m_smallState = WAIT_UEREQ;
   m_lastHandoverTransactionIdentifier = 0;
+  m_smallCellId = 0;
 }
 
 void
@@ -677,7 +679,7 @@ UeManager::RecvHandoverRequestAck (EpcX2SapUser::HandoverRequestAckParams params
   m_rrc->m_rrcSapUser->SendRrcConnectionReconfiguration (m_rnti, handoverCommand);
 
   NS_ASSERT (handoverCommand.haveMobilityControlInfo);
-  m_rrc->m_handoverStartTrace (m_imsi, m_rrc->m_cellId, m_rnti, handoverCommand.mobilityControlInfo.targetPhysCellId);
+  // m_rrc->m_handoverStartTrace (m_imsi, m_rrc->m_cellId, m_rnti, handoverCommand.mobilityControlInfo.targetPhysCellId);
 }
 
 
@@ -1001,6 +1003,7 @@ UeManager::RecvX2ConnectionSetupCompleted ()
                   << m_macroCellId);
   StartDataRadioBearers ();
   SwitchToState (CONNECTED_NORMALLY);
+  m_rrc->m_connectionReconfigurationTrace (m_imsi, m_rrc->m_cellId, m_rnti);
 }
 
 void
@@ -1020,7 +1023,6 @@ UeManager::DoSmallConnectionSetupCompleted (LteRrcSap::RrcConnectionSetupComplet
                 << m_smallCellId);
   m_rrc->m_x2SapProvider->SendSmallConnectionCompleted (params);
   SmallSwitchToState (CONNECTED_SMALL);
-  m_rrc->IncUeOnSmallCell (m_smallCellId);
   // SendRrcTestMsg ();
 }
 
@@ -2081,8 +2083,8 @@ LteEnbRrc::ConfigureCell (uint8_t ulBandwidth, uint8_t dlBandwidth,
    */
   Simulator::Schedule (MilliSeconds (16), &LteEnbRrc::SendSystemInformation, this);
 
-  if (isSmallCell ())
-    Simulator::Schedule ( MilliSeconds (200), &LteEnbRrc::DoSendDlCqi, this);
+  // if (isSmallCell ())
+  //   Simulator::Schedule ( MilliSeconds (200), &LteEnbRrc::DoSendDlCqi, this);
 
   m_configured = true;
 
@@ -2644,6 +2646,42 @@ LteEnbRrc::RemoveUe (uint16_t rnti)
   RemoveSrsConfigurationIndex (srsCi); 
 }
 
+void
+LteEnbRrc::SmallRemoveUe (uint16_t rnti)
+{
+  NS_LOG_FUNCTION (this << (uint32_t) rnti);
+  std::map <uint16_t, Ptr<UeManager> >::iterator it = m_ueMap.find (rnti);
+  if(it == m_ueMap.end ()) {
+      NS_LOG_WARN ("request to remove UE info with unknown rnti " << rnti);
+      return;
+  }
+  uint16_t srsCi = (*it).second->GetSrsConfigurationIndex ();
+  m_ueMap.erase (it);
+  m_cmacSapProvider->RemoveUe (rnti);
+  m_cphySapProvider->RemoveUe (rnti);
+  if (m_s1SapProvider != 0)
+    {
+      m_s1SapProvider->UeContextRelease (rnti);
+    }
+  // need to do this after UeManager has been deleted
+  RemoveSrsConfigurationIndex (srsCi); 
+}
+
+void
+LteEnbRrc::MacroRemoveUe (uint16_t rnti) {
+NS_LOG_FUNCTION (this << (uint32_t) rnti);
+  std::map <uint16_t, Ptr<UeManager> >::iterator it = m_ueMap.find (rnti);
+  if(it == m_ueMap.end ()) {
+      NS_LOG_WARN ("request to remove UE info with unknown rnti " << rnti);
+      return;
+  }
+  uint16_t srsCi = (*it).second->GetSrsConfigurationIndex ();
+  m_ueMap.erase (it);
+  m_cmacSapProvider->RemoveUe (rnti);
+  m_cphySapProvider->RemoveUe (rnti);
+  RemoveSrsConfigurationIndex (srsCi); 
+}
+
 TypeId
 LteEnbRrc::GetRlcType (EpsBearer bearer)
 {
@@ -2860,86 +2898,18 @@ LteEnbRrc::SendSystemInformation ()
   Simulator::Schedule (m_systemInformationPeriodicity, &LteEnbRrc::SendSystemInformation, this);
 }
 
-uint16_t
-LteEnbRrc::GetUeOnSmallCell (uint16_t cellId)
-{
-  std::map<uint16_t, uint16_t>::iterator it = m_uePerSmallCell.find (cellId);
-  if (it == m_uePerSmallCell.end ())
-      return 0;
-  else
-      return it->second;
-}
-
-void
-LteEnbRrc::IncUeOnSmallCell (uint16_t cellId)
-{
-  std::map<uint16_t, uint16_t>::iterator it = m_uePerSmallCell.find (cellId);
-  if (it == m_uePerSmallCell.end ())
-      m_uePerSmallCell[cellId] = 1;
-  else
-      it->second += 1;
-}
-
-void
-LteEnbRrc::DecUeOnSmallCell (uint16_t cellId)
-{
-  std::map<uint16_t, uint16_t>::iterator it = m_uePerSmallCell.find (cellId);
-  if (it != m_uePerSmallCell.end ())
-    {
-      it->second -= 1;
-      if (it->second == 0)
-          m_uePerSmallCell.erase (it);
-    }
-}
-
-void
-LteEnbRrc::DoTurnOnAllCells ()
-{
-  NS_LOG_FUNCTION (this);
-  std::set<uint16_t>::iterator it = m_offCells.begin ();
-  while (it != m_offCells.end ())
-  {
-    DoOnOffRequest (*it, true);
-    m_onCells.insert (*it);
-  }
-  m_offCells.clear ();
-}
-
-void
-LteEnbRrc::DoTurnOffAllCells ()
-{
-  NS_LOG_FUNCTION (this);
-  std::set<uint16_t>::iterator it = m_onCells.begin ();
-  while (it != m_onCells.end ())
-  {
-    DoOnOffRequest (*it, false);
-    m_offCells.insert (*it);
-  }
-  m_onCells.clear ();
-}
-
 void
 LteEnbRrc::DoTurnOnCell (uint16_t cellId)
 {
-  NS_LOG_INFO ("turn on small cell " << cellId);
-  if (m_offCells.count (cellId))
-  {
-    DoOnOffRequest (cellId, true);
-    m_offCells.erase (cellId);
-    m_onCells.insert (cellId);
-  }
+  NS_LOG_FUNCTION (this << cellId);
+  DoOnOffRequest (cellId, true);
 }
 
 void
 LteEnbRrc::DoTurnOffCell (uint16_t cellId)
 {
-  NS_LOG_INFO ("turn off small cell " << cellId);
-  if (m_onCells.count (cellId))
-  {
-    DoOnOffRequest (cellId, false);
-    m_onCells.erase (cellId);
-    m_offCells.insert (cellId);
-  }
+  NS_LOG_FUNCTION (this << cellId);
+  DoOnOffRequest (cellId, false);
 }
 
 void
@@ -2966,7 +2936,7 @@ LteEnbRrc::DoRecvOnOffRequest (EpcX2SapUser::OnOffRequestParams params)
 void
 LteEnbRrc::DoTurnOn ()
 {
-  NS_LOG_INFO ("small cell " << m_cellId << " is on");
+  NS_LOG_FUNCTION (this);
   m_isSleeping = false;
   m_cphySapProvider->TurnOn ();
 }
@@ -2974,8 +2944,9 @@ LteEnbRrc::DoTurnOn ()
 void
 LteEnbRrc::DoTurnOff ()
 {
-  NS_LOG_INFO ("small cell " << m_cellId << " is off");
+  NS_LOG_FUNCTION (this);
   m_isSleeping = true;
+  m_cqiReport.clear ();
   m_cphySapProvider->TurnOff ();
 }
 
@@ -2984,6 +2955,7 @@ LteEnbRrc::RegisterSmallCell (uint16_t cellId)
 {
   NS_LOG_INFO ("macro cell " << m_cellId << " register small cell " << cellId);
   m_smallCells.insert (cellId);
+  m_onCells.insert (cellId);
 }
 
 void
@@ -3007,9 +2979,58 @@ LteEnbRrc::DoCollectSleepInformation ()
 }
 
 void
-LteEnbRrc::DoSleepTrigger (LteRrcSap::SleepPolicy sleepPolicy)
+LteEnbRrc::DoSleepTrigger (LteSleepManagementSapUser::SleepPolicy sleepPolicy)
 {
   NS_LOG_FUNCTION (this);
+
+  std::set<uint16_t>& sleepCells = sleepPolicy.sleepCells;
+  std::map<uint16_t, uint16_t>& newConnection = sleepPolicy.newConnection;
+
+  m_pendingOnCells.clear ();
+  m_pendingOffCells.clear ();
+  std::set_intersection (sleepCells.begin (), sleepCells.end (),
+                       m_onCells.begin (), m_onCells.end (),
+                       std::inserter(m_pendingOffCells, m_pendingOffCells.begin ()));
+  std::set_difference (m_offCells.begin (), m_offCells.end (),
+                       sleepCells.begin (), sleepCells.end (),
+                       std::inserter(m_pendingOnCells, m_pendingOnCells.begin ()));
+  std::set<uint16_t> s;
+  std::set_difference (m_offCells.begin (), m_offCells.end (),
+                       m_pendingOnCells.begin (), m_pendingOnCells.end (),
+                       std::inserter(s, s.begin ()));
+  m_offCells = s;
+  std::set_difference (m_onCells.begin (), m_onCells.end (),
+                       m_pendingOffCells.begin (), m_pendingOffCells.end (),
+                       std::inserter(s, s.begin ()));
+  m_onCells = s;
+
+  std::set<uint16_t>::iterator it = m_pendingOnCells.begin ();
+  while (it != m_pendingOnCells.end ())
+  {
+    DoTurnOnCell (*it);
+    m_onCells.insert (*it);
+    ++it;
+  }
+  m_pendingOnCells.clear();
+
+  m_pendingHandover.clear ();
+  std::map<uint16_t, uint16_t>::iterator mit = newConnection.begin ();
+  while (mit != newConnection.end ())
+  {
+    uint16_t sourceCellId = GetUeManager (mit->first)->GetSmallCellId ();
+    if (m_pendingOffCells.count (sourceCellId));
+    {
+      m_pendingHandover[sourceCellId].insert (mit->first);
+    }
+    ++mit;
+  }
+
+  mit = newConnection.begin ();
+  while (mit != newConnection.end ())
+  {
+    SendHandoverRequest (mit->first, mit->second);
+    ++mit;
+  }
 }
 
 uint8_t
@@ -3037,7 +3058,7 @@ LteEnbRrc::DoSendDlCqi ()
 {
   NS_LOG_FUNCTION (this);
 
-  if (!m_cqiReport.empty ())
+  if (!m_isSleeping && !m_cqiReport.empty ())
   {
     EpcX2Sap::DlCqiParams params;
     params.sourceCellId = m_cellId;
@@ -3062,12 +3083,13 @@ LteEnbRrc::DoRecvDlCqi (EpcX2SapUser::DlCqiParams params)
 {
   NS_LOG_FUNCTION (this);
   NS_LOG_INFO ("recv DL CQI from " << params.sourceCellId << " total " << params.rntis.size ());
+  m_sleepManagementSapProvider->ReportDlCqi (params.sourceCellId, params);
 }
 
 void
 LteEnbRrc::DoRecvHandoverTrigger (EpcX2SapUser::HandoverTriggerParams params)
 {
-  NS_LOG_FUNCTION (this << params.hoTargetCellId << params.rnti);
+  NS_LOG_FUNCTION (this << "rnti" << params.rnti << "from" << m_cellId << "to" << params.hoTargetCellId);
 
   Ptr<UeManager> ueManager = GetUeManager (params.rnti);
   ueManager->PrepareHandover (params.hoTargetCellId);
@@ -3096,8 +3118,50 @@ LteEnbRrc::DoRecvHandoverTriggerAck (EpcX2SapUser::HandoverTriggerParams params)
 {
   NS_LOG_FUNCTION (this << params.rnti);
 
-  Ptr<UeManager> ueManager = GetUeManager (params.rnti);
+  uint16_t rnti = params.rnti;
+  Ptr<UeManager> ueManager = GetUeManager (rnti);
+  uint16_t cellId = ueManager->GetSmallCellId ();
   ueManager->RecvHandoverTriggerAck ();
+
+  if (m_pendingHandover.count(cellId))
+  {
+    m_pendingHandover[cellId].erase (rnti);
+    if (m_pendingHandover[cellId].empty ())
+    {
+      m_pendingHandover.erase (cellId);
+    }
+  }
+
+  if (m_pendingHandover.empty () && !m_pendingOffCells.empty ())
+  {
+    NS_LOG_DEBUG ("turn off cells");
+    std::set<uint16_t>::iterator it = m_pendingOffCells.begin ();
+    while (it != m_pendingOffCells.end ())
+    {
+      DoTurnOffCell (*it);
+      m_offCells.insert (*it);
+      ++it;
+    }
+    m_pendingOffCells.clear ();
+  }
+}
+
+std::set<uint16_t>
+LteEnbRrc::DoGetSmallCellSet ()
+{
+  return m_smallCells;
+}
+
+void
+LteEnbRrc::DoGetConnectionMap (std::map<uint16_t, uint16_t>& conn, std::map<uint16_t, uint64_t>& idmap)
+{
+  std::map<uint16_t, Ptr<UeManager> >::iterator it = m_ueMap.begin ();
+  while (it != m_ueMap.end ())
+  {
+    conn[it->first] = it->second->GetSmallCellId ();
+    idmap[it->first] = it->second->GetImsi ();
+    ++it;
+  }
 }
 
 } // namespace ns3

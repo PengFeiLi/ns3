@@ -24,20 +24,41 @@
 
 #include <ns3/object.h>
 #include <ns3/lte-rrc-sap.h>
+#include <ns3/epc-x2-sap.h>
+
+#include <set>
+#include <map>
+
 
 namespace ns3 {
+
+
+class LteSleepManagementSap
+{
+public:
+    virtual ~LteSleepManagementSap ();
+
+    struct SleepPolicy
+    {
+      std::set<uint16_t> sleepCells;
+      std::map<uint16_t, uint16_t> newConnection;
+    };
+
+};
 
 
 /**
  * \brief Service Access Point offered by the sleep algorithm instance
  *        to the macro cell RRC instance.
  */
-class LteSleepManagementSapProvider
+class LteSleepManagementSapProvider : public LteSleepManagementSap
 {
 public:
     virtual ~LteSleepManagementSapProvider ();
 
     virtual void ReportUeMeas (uint16_t rnti, LteRrcSap::MeasResults measResults) = 0;
+
+    virtual void ReportDlCqi (uint16_t cellId, EpcX2Sap::DlCqiParams params) = 0;
 
 }; // end of LteSleepManagementSapProvider
 
@@ -46,14 +67,19 @@ public:
  * \brief Service Access Point offered by the macro cell RRC instance to the
  *        sleep algorithm instance.
  */
-class LteSleepManagementSapUser
+class LteSleepManagementSapUser : public LteSleepManagementSap
 {
 public:
     virtual ~LteSleepManagementSapUser ();
 
     virtual uint8_t AddUeMeasReportConfigForSleep (LteRrcSap::ReportConfigEutra reportConfig) = 0;
 
-    virtual void SleepTrigger (LteRrcSap::SleepPolicy sleepPolicy) = 0;
+    virtual void SleepTrigger (SleepPolicy sleepPolicy) = 0;
+
+    virtual std::set<uint16_t> GetSmallCellSet () = 0;
+
+    virtual void GetConnectionMap (std::map<uint16_t, uint16_t>& conn, std::map<uint16_t, uint64_t>& idmap) = 0;
+
 }; // end of LteSleepManagementSapUser
 
 
@@ -64,6 +90,8 @@ public:
     MemberLteSleepManagementSapProvider (C* owner);
 
     virtual void ReportUeMeas (uint16_t rnti, LteRrcSap::MeasResults measResults);
+
+    virtual void ReportDlCqi (uint16_t cellId, EpcX2Sap::DlCqiParams params);
 
 private:
     MemberLteSleepManagementSapProvider ();
@@ -83,6 +111,12 @@ MemberLteSleepManagementSapProvider<C>::ReportUeMeas (uint16_t rnti, LteRrcSap::
     m_owner->DoReportUeMeas (rnti, measResults);
 }
 
+template <class C>
+void
+MemberLteSleepManagementSapProvider<C>::ReportDlCqi (uint16_t cellId, EpcX2Sap::DlCqiParams params)
+{
+    m_owner->DoReportDlCqi (cellId, params);
+}
 
 template <class C>
 class MemberLteSleepManagementSapUser : public LteSleepManagementSapUser
@@ -92,7 +126,11 @@ public:
 
     virtual uint8_t AddUeMeasReportConfigForSleep (LteRrcSap::ReportConfigEutra reportConfig);
 
-    virtual void SleepTrigger (LteRrcSap::SleepPolicy sleepPolicy);
+    virtual void SleepTrigger (SleepPolicy sleepPolicy);
+
+    virtual std::set<uint16_t> GetSmallCellSet ();
+
+    virtual void GetConnectionMap (std::map<uint16_t, uint16_t>& conn, std::map<uint16_t, uint64_t>& idmap);
 
 private:
     MemberLteSleepManagementSapUser ();
@@ -114,10 +152,25 @@ MemberLteSleepManagementSapUser<C>::AddUeMeasReportConfigForSleep (LteRrcSap::Re
 
 template <class C>
 void
-MemberLteSleepManagementSapUser<C>::SleepTrigger (LteRrcSap::SleepPolicy sleepPolicy)
+MemberLteSleepManagementSapUser<C>::SleepTrigger (SleepPolicy sleepPolicy)
 {
     m_owner->DoSleepTrigger (sleepPolicy);
 }
+
+template <class C>
+std::set<uint16_t>
+MemberLteSleepManagementSapUser<C>::GetSmallCellSet ()
+{
+    return m_owner->DoGetSmallCellSet ();
+}
+
+template <class C>
+void
+MemberLteSleepManagementSapUser<C>::GetConnectionMap (std::map<uint16_t, uint16_t>& conn, std::map<uint16_t, uint64_t>& idmap)
+{
+    return m_owner->DoGetConnectionMap (conn, idmap);
+}
+
 
 } // end of namespace ns3
 

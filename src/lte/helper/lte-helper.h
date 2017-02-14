@@ -37,9 +37,27 @@
 #include <ns3/radio-bearer-stats-connector.h>
 #include <ns3/epc-tft.h>
 #include <ns3/mobility-model.h>
+#include <ns3/lte-ue-net-device.h>
 
 namespace ns3 {
 
+
+struct ClusterInfo
+{
+  uint32_t cid;
+  uint32_t num;
+
+  ClusterInfo () : cid(0), num(0) {}
+};
+
+struct EnbInfo
+{
+  uint8_t type; // 1:macro 2:small
+  Vector pos;
+  uint32_t cid;
+
+  EnbInfo () : type(0), cid(0) {}
+};
 
 class LteUePhy;
 class LteEnbPhy;
@@ -120,6 +138,8 @@ public:
    * \param h a pointer to the EpcHelper to be used
    */
   void SetEpcHelper (Ptr<EpcHelper> h);
+
+  Ptr<EpcHelper> GetEpcHelper ();
 
   /** 
    * Set the type of path loss model to be used for both DL and UL channels.
@@ -295,6 +315,8 @@ public:
    * \return the NetDeviceContainer with the newly created devices
    */
   NetDeviceContainer InstallUeDevice (NodeContainer c);
+
+  Ptr<NetDevice> InstallUeDevice (Ptr<Node> node);
 
   /**
    * \brief Enables automatic attachment of a set of UE devices to a suitable
@@ -752,13 +774,14 @@ public:
     NetDeviceContainer InstallClusterEnbDevice (NodeContainer c, uint16_t numberOfClusters, uint16_t nodesPerCluster);
     NetDeviceContainer InstallMacroEnbDevices (NodeContainer c);
     NetDeviceContainer InstallSmallEnbDevices (NodeContainer c, uint32_t numberPerCluster);
+    NetDeviceContainer InstallSmallEnbDevicesCluster (NodeContainer c, std::vector<ClusterInfo>& cinfo, std::vector<EnbInfo>& sinfo, uint32_t bw);
     void AttachDelay (Ptr<NetDevice> ueDevice);
-    void RegisterSmallCells (NetDeviceContainer mcDevices, NetDeviceContainer scDevices, uint16_t scPerMc);
+    void RegisterSmallCells (NetDeviceContainer& mcDevices, NetDeviceContainer& scDevices);
 
     std::string GetSleepAlgorithmType () const;
     void SetSleepAlgorithmType (std::string type);
     void SetSleepAlgorithmAttribute (std::string n, const AttributeValue &v);
-
+    void ReInstallUe (Ptr<Node> n, Ptr<LteUeNetDevice> dev);
 }; // end of `class LteHelper`
 
 

@@ -231,6 +231,14 @@ LteHelper::SetEpcHelper (Ptr<EpcHelper> h)
   m_epcHelper = h;
 }
 
+Ptr<EpcHelper>
+LteHelper::GetEpcHelper ()
+{
+  NS_LOG_FUNCTION (this);
+  return m_epcHelper;
+}
+
+
 void 
 LteHelper::SetSchedulerType (std::string type) 
 {
@@ -414,6 +422,14 @@ LteHelper::InstallUeDevice (NodeContainer c)
       devices.Add (device);
     }
   return devices;
+}
+
+Ptr<NetDevice>
+LteHelper::InstallUeDevice (Ptr<Node> node)
+{
+  NS_LOG_FUNCTION (this);
+
+  return InstallSingleUeDevice (node);
 }
 
 Ptr<NetDevice>
@@ -822,6 +838,215 @@ LteHelper::InstallSingleUeDevice (Ptr<Node> n)
   return dev;
 }
 
+void
+LteHelper::ReInstallUe (Ptr<Node> n, Ptr<LteUeNetDevice> dev)
+{
+  NS_LOG_FUNCTION (this);
+  Ptr<LteSpectrumPhy> dlPhy = CreateObject<LteSpectrumPhy> ();
+  Ptr<LteSpectrumPhy> ulPhy = CreateObject<LteSpectrumPhy> ();
+
+  Ptr<LteSpectrumPhy> smallDlPhy = CreateObject<LteSpectrumPhy> ();
+  Ptr<LteSpectrumPhy> smallUlPhy = CreateObject<LteSpectrumPhy> ();
+
+
+  Ptr<LteUePhy> phy = CreateObject<LteUePhy> (dlPhy, ulPhy);
+  Ptr<LteUePhy> smallPhy = CreateObject<LteUePhy> (smallDlPhy, smallUlPhy);
+
+
+  Ptr<LteHarqPhy> harq = Create<LteHarqPhy> ();
+  dlPhy->SetHarqPhyModule (harq);
+  ulPhy->SetHarqPhyModule (harq);
+  phy->SetHarqPhyModule (harq);
+
+  Ptr<LteHarqPhy> smallHarq = Create<LteHarqPhy> ();
+  smallDlPhy->SetHarqPhyModule (smallHarq);
+  smallUlPhy->SetHarqPhyModule (smallHarq);
+  smallPhy->SetHarqPhyModule (smallHarq);
+
+
+  Ptr<LteChunkProcessor> pRs = Create<LteChunkProcessor> ();
+  pRs->AddCallback (MakeCallback (&LteUePhy::ReportRsReceivedPower, phy));
+  dlPhy->AddRsPowerChunkProcessor (pRs);
+
+  Ptr<LteChunkProcessor> smallPRs = Create<LteChunkProcessor> ();
+  smallPRs->AddCallback (MakeCallback (&LteUePhy::ReportRsReceivedPower, smallPhy));
+  smallDlPhy->AddRsPowerChunkProcessor (smallPRs);
+
+
+  Ptr<LteChunkProcessor> pInterf = Create<LteChunkProcessor> ();
+  pInterf->AddCallback (MakeCallback (&LteUePhy::ReportInterference, phy));
+  dlPhy->AddInterferenceCtrlChunkProcessor (pInterf); // for RSRQ evaluation of UE Measurements
+
+  Ptr<LteChunkProcessor> smallPInterf = Create<LteChunkProcessor> ();
+  smallPInterf->AddCallback (MakeCallback (&LteUePhy::ReportInterference, smallPhy));
+  smallDlPhy->AddInterferenceCtrlChunkProcessor (smallPInterf); // for RSRQ evaluation of UE Measurements
+
+
+  Ptr<LteChunkProcessor> pCtrl = Create<LteChunkProcessor> ();
+  pCtrl->AddCallback (MakeCallback (&LteSpectrumPhy::UpdateSinrPerceived, dlPhy));
+  dlPhy->AddCtrlSinrChunkProcessor (pCtrl);
+
+  Ptr<LteChunkProcessor> smallPCtrl = Create<LteChunkProcessor> ();
+  smallPCtrl->AddCallback (MakeCallback (&LteSpectrumPhy::UpdateSinrPerceived, smallDlPhy));
+  smallDlPhy->AddCtrlSinrChunkProcessor (smallPCtrl);
+
+
+  Ptr<LteChunkProcessor> pData = Create<LteChunkProcessor> ();
+  pData->AddCallback (MakeCallback (&LteSpectrumPhy::UpdateSinrPerceived, dlPhy));
+  dlPhy->AddDataSinrChunkProcessor (pData);
+
+  Ptr<LteChunkProcessor> smallPData = Create<LteChunkProcessor> ();
+  smallPData->AddCallback (MakeCallback (&LteSpectrumPhy::UpdateSinrPerceived, smallDlPhy));
+  smallDlPhy->AddDataSinrChunkProcessor (smallPData);
+
+
+  if (m_usePdschForCqiGeneration)
+    {
+      // CQI calculation based on PDCCH for signal and PDSCH for interference
+      pCtrl->AddCallback (MakeCallback (&LteUePhy::GenerateMixedCqiReport, phy));
+      Ptr<LteChunkProcessor> pDataInterf = Create<LteChunkProcessor> ();      
+      pDataInterf->AddCallback (MakeCallback (&LteUePhy::ReportDataInterference, phy));
+      dlPhy->AddInterferenceDataChunkProcessor (pDataInterf);
+
+      smallPCtrl->AddCallback (MakeCallback (&LteUePhy::GenerateMixedCqiReport, smallPhy));
+      Ptr<LteChunkProcessor> smallPDataInterf = Create<LteChunkProcessor> ();      
+      smallPDataInterf->AddCallback (MakeCallback (&LteUePhy::ReportDataInterference, smallPhy));
+      smallDlPhy->AddInterferenceDataChunkProcessor (smallPDataInterf);
+    }
+  else
+    {
+      // CQI calculation based on PDCCH for both signal and interference
+      pCtrl->AddCallback (MakeCallback (&LteUePhy::GenerateCtrlCqiReport, phy));
+
+      smallPCtrl->AddCallback (MakeCallback (&LteUePhy::GenerateCtrlCqiReport, smallPhy));
+    }
+
+
+
+  dlPhy->SetChannel (m_downlinkChannel);
+  ulPhy->SetChannel (m_uplinkChannel);
+
+  smallDlPhy->SetChannel (m_downlinkChannel);
+  smallUlPhy->SetChannel (m_uplinkChannel);
+
+
+  Ptr<MobilityModel> mm = n->GetObject<MobilityModel> ();
+  NS_ASSERT_MSG (mm, "MobilityModel needs to be set on node before calling LteHelper::InstallUeDevice ()");
+  dlPhy->SetMobility (mm);
+  ulPhy->SetMobility (mm);
+
+  smallDlPhy->SetMobility (mm);
+  smallUlPhy->SetMobility (mm);
+
+
+  Ptr<AntennaModel> antenna = (m_ueAntennaModelFactory.Create ())->GetObject<AntennaModel> ();
+  NS_ASSERT_MSG (antenna, "error in creating the AntennaModel object");
+  dlPhy->SetAntenna (antenna);
+  ulPhy->SetAntenna (antenna);
+
+  smallDlPhy->SetAntenna (antenna);
+  smallUlPhy->SetAntenna (antenna);
+
+
+  Ptr<LteUeMac> mac = CreateObject<LteUeMac> ();
+  Ptr<LteUeMac> smallMac = CreateObject<LteUeMac> ();
+
+
+  Ptr<LteUeRrc> rrc = CreateObject<LteUeRrc> ();
+
+
+  if (m_useIdealRrc)
+    {
+      Ptr<LteUeRrcProtocolIdeal> rrcProtocol = CreateObject<LteUeRrcProtocolIdeal> ();
+      rrcProtocol->SetUeRrc (rrc);
+      rrc->AggregateObject (rrcProtocol);
+      rrcProtocol->SetLteUeRrcSapProvider (rrc->GetLteUeRrcSapProvider ());
+      rrc->SetLteUeRrcSapUser (rrcProtocol->GetLteUeRrcSapUser ());
+
+      Ptr<LteUeRrcProtocolIdeal> smallRrcProtocol = CreateObject<LteUeRrcProtocolIdeal> (false);
+      smallRrcProtocol->SetUeRrc (rrc);
+      // rrc->AggregateObject (smallRrcProtocol);
+      smallRrcProtocol->SetLteUeRrcSapProvider (rrc->GetSmallLteUeRrcSapProvider ());
+      rrc->SetSmallLteUeRrcSapUser (smallRrcProtocol->GetLteUeRrcSapUser ());
+    }
+  else
+    {
+      Ptr<LteUeRrcProtocolReal> rrcProtocol = CreateObject<LteUeRrcProtocolReal> ();
+      rrcProtocol->SetUeRrc (rrc);
+      rrc->AggregateObject (rrcProtocol);
+      rrcProtocol->SetLteUeRrcSapProvider (rrc->GetLteUeRrcSapProvider ());
+      rrc->SetLteUeRrcSapUser (rrcProtocol->GetLteUeRrcSapUser ());
+
+      Ptr<LteUeRrcProtocolReal> smallRrcProtocol = CreateObject<LteUeRrcProtocolReal> (false);
+      smallRrcProtocol->SetUeRrc (rrc);
+      // rrc->AggregateObject (smallRrcProtocol);
+      smallRrcProtocol->SetLteUeRrcSapProvider (rrc->GetSmallLteUeRrcSapProvider ());
+      rrc->SetSmallLteUeRrcSapUser (smallRrcProtocol->GetLteUeRrcSapUser ());
+    }
+
+  if (m_epcHelper != 0)
+    {
+      rrc->SetUseRlcSm (false);
+    }
+  Ptr<EpcUeNas> nas = CreateObject<EpcUeNas> ();
+ 
+  nas->SetAsSapProvider (rrc->GetAsSapProvider ());
+  rrc->SetAsSapUser (nas->GetAsSapUser ());
+
+  rrc->SetLteUeCmacSapProvider (mac->GetLteUeCmacSapProvider ());
+  mac->SetLteUeCmacSapUser (rrc->GetLteUeCmacSapUser ());
+  rrc->SetLteMacSapProvider (mac->GetLteMacSapProvider ());
+
+  phy->SetLteUePhySapUser (mac->GetLteUePhySapUser ());
+  mac->SetLteUePhySapProvider (phy->GetLteUePhySapProvider ());
+
+  phy->SetLteUeCphySapUser (rrc->GetLteUeCphySapUser ());
+  rrc->SetLteUeCphySapProvider (phy->GetLteUeCphySapProvider ());
+
+
+  rrc->SetSmallLteUeCmacSapProvider (smallMac->GetLteUeCmacSapProvider ());
+  smallMac->SetLteUeCmacSapUser (rrc->GetSmallLteUeCmacSapUser ());
+  rrc->SetSmallLteMacSapProvider (smallMac->GetLteMacSapProvider ());
+
+  smallPhy->SetLteUePhySapUser (smallMac->GetLteUePhySapUser ());
+  smallMac->SetLteUePhySapProvider (smallPhy->GetLteUePhySapProvider ());
+
+  smallPhy->SetLteUeCphySapUser (rrc->GetSmallLteUeCphySapUser ());
+  rrc->SetSmallLteUeCphySapProvider (smallPhy->GetLteUeCphySapProvider ());
+
+  dev->Reset ();
+  dev->SetAttribute ("LteUePhy", PointerValue (phy));
+  dev->SetAttribute ("LteUeMac", PointerValue (mac));
+  dev->SetAttribute ("SmallLteUePhy", PointerValue (smallPhy));
+  dev->SetAttribute ("SmallLteUeMac", PointerValue (smallMac));
+  dev->SetAttribute ("LteUeRrc", PointerValue (rrc));
+  dev->SetAttribute ("EpcUeNas", PointerValue (nas));
+  dev->Update ();
+
+
+  phy->SetDevice (dev);
+  dlPhy->SetDevice (dev);
+  ulPhy->SetDevice (dev);
+
+  smallPhy->SetDevice (dev);
+  smallDlPhy->SetDevice (dev);
+  smallUlPhy->SetDevice (dev);
+
+  nas->SetDevice (dev);
+
+  dlPhy->SetLtePhyRxDataEndOkCallback (MakeCallback (&LteUePhy::PhyPduReceived, phy));
+  dlPhy->SetLtePhyRxCtrlEndOkCallback (MakeCallback (&LteUePhy::ReceiveLteControlMessageList, phy));
+  dlPhy->SetLtePhyRxPssCallback (MakeCallback (&LteUePhy::ReceivePss, phy));
+  dlPhy->SetLtePhyDlHarqFeedbackCallback (MakeCallback (&LteUePhy::ReceiveLteDlHarqFeedback, phy));
+
+
+  smallDlPhy->SetLtePhyRxDataEndOkCallback (MakeCallback (&LteUePhy::PhyPduReceived, smallPhy));
+  smallDlPhy->SetLtePhyRxCtrlEndOkCallback (MakeCallback (&LteUePhy::ReceiveLteControlMessageList, smallPhy));
+  smallDlPhy->SetLtePhyRxPssCallback (MakeCallback (&LteUePhy::ReceivePss, smallPhy));
+  smallDlPhy->SetLtePhyDlHarqFeedbackCallback (MakeCallback (&LteUePhy::ReceiveLteDlHarqFeedback, smallPhy));
+
+  nas->SetForwardUpCallback (MakeCallback (&LteUeNetDevice::Receive, dev));
+}
 
 void
 LteHelper::Attach (NetDeviceContainer ueDevices)
@@ -1280,12 +1505,16 @@ LteHelper::EnableUlTxPhyTraces (void)
 {
   Config::Connect ("/NodeList/*/DeviceList/*/LteUePhy/UlPhyTransmission",
                    MakeBoundCallback (&PhyTxStatsCalculator::UlPhyTransmissionCallback, m_phyTxStats));
+  Config::Connect ("/NodeList/*/DeviceList/*/LteSmallUePhy/UlPhyTransmission",
+                   MakeBoundCallback (&PhyTxStatsCalculator::UlPhyTransmissionCallback, m_phyTxStats));
 }
 
 void
 LteHelper::EnableDlRxPhyTraces (void)
 {
   Config::Connect ("/NodeList/*/DeviceList/*/LteUePhy/DlSpectrumPhy/DlPhyReception",
+                   MakeBoundCallback (&PhyRxStatsCalculator::DlPhyReceptionCallback, m_phyRxStats));
+  Config::Connect ("/NodeList/*/DeviceList/*/LteSmallUePhy/DlSpectrumPhy/DlPhyReception",
                    MakeBoundCallback (&PhyRxStatsCalculator::DlPhyReceptionCallback, m_phyRxStats));
 }
 
@@ -1325,7 +1554,9 @@ void
 LteHelper::EnableDlPhyTraces (void)
 {
   NS_LOG_FUNCTION_NOARGS ();
-  Config::Connect ("/NodeList/*/DeviceList/*/LteUePhy/ReportCurrentCellRsrpSinr",
+  // Config::Connect ("/NodeList/*/DeviceList/*/LteUePhy/ReportCurrentCellRsrpSinr",
+  //                  MakeBoundCallback (&PhyStatsCalculator::ReportCurrentCellRsrpSinrCallback, m_phyStats));
+  Config::Connect ("/NodeList/*/DeviceList/*/SmallLteUePhy/ReportCurrentCellRsrpSinr",
                    MakeBoundCallback (&PhyStatsCalculator::ReportCurrentCellRsrpSinrCallback, m_phyStats));
 }
 
@@ -1388,6 +1619,28 @@ LteHelper::InstallClusterEnbDevice (NodeContainer c, uint16_t numberOfClusters, 
           ++it;
         }
     }
+  return devices;
+}
+
+NetDeviceContainer
+LteHelper::InstallSmallEnbDevicesCluster (NodeContainer c, std::vector<ClusterInfo>& cinfo, std::vector<EnbInfo>& sinfo, uint32_t bw)//添加分簇的建立微站函数
+{
+  SetFfrAlgorithmType ("ns3::LteFrHardAlgorithm");
+  NetDeviceContainer devices;
+  std::map<uint32_t, uint32_t> counter;
+
+  for(uint32_t j=0;j < c.GetN (); j++)
+  {
+    uint32_t cid = sinfo[j].cid;
+    uint32_t ffrRB = bw / cinfo[cid-1].num;
+    SetFfrAlgorithmAttribute ("DlSubBandOffset", UintegerValue (counter[cid]*ffrRB));
+    SetFfrAlgorithmAttribute ("DlSubBandwidth", UintegerValue (ffrRB));
+    SetFfrAlgorithmAttribute ("UlSubBandOffset", UintegerValue (counter[cid]*ffrRB));
+    SetFfrAlgorithmAttribute ("UlSubBandwidth", UintegerValue (ffrRB));
+
+    Ptr<NetDevice> device = InstallSmallEnbDevice(c.Get (j), cid, ++counter[cid]);
+    devices.Add (device);
+  }
   return devices;
 }
 
@@ -1493,6 +1746,7 @@ LteHelper::InstallBaseEnbDevice (Ptr<Node> n, uint16_t cellId)
   Ptr<LteFfrAlgorithm> ffrAlgorithm = m_ffrAlgorithmFactory.Create<LteFfrAlgorithm> ();
   Ptr<LteHandoverAlgorithm> handoverAlgorithm = m_handoverAlgorithmFactory.Create<LteHandoverAlgorithm> ();
   Ptr<LteSleepAlgorithm> sleepAlgorithm = m_sleepAlgorithmFactory.Create<LteSleepAlgorithm> ();
+  sleepAlgorithm->SetCellId (cellId);
   Ptr<LteEnbRrc> rrc = CreateObject<LteEnbRrc> ();
 
   if (m_useIdealRrc)
@@ -1646,19 +1900,17 @@ LteHelper::AttachDelay (Ptr<NetDevice> ueDevice)
 }
 
 void
-LteHelper::RegisterSmallCells (NetDeviceContainer mcDevices, NetDeviceContainer scDevices, uint16_t scPerMc)
+LteHelper::RegisterSmallCells (NetDeviceContainer& mcDevices, NetDeviceContainer& scDevices)
 {
-  NetDeviceContainer::Iterator mcIt = mcDevices.Begin ();
-  NetDeviceContainer::Iterator scIt = scDevices.Begin ();
-  while (mcIt != mcDevices.End ())
+  for(uint32_t i=0; i<mcDevices.GetN (); ++i)
   {
-    Ptr<LteEnbRrc> mcRrc = DynamicCast<LteEnbNetDevice> (*mcIt)->GetRrc ();
-    for (int i=0; i<scPerMc; ++i, ++scIt)
+    Ptr<LteEnbRrc> mcRrc = DynamicCast<LteEnbNetDevice> (mcDevices.Get (i))->GetRrc ();
+    for (uint32_t j=0; j<scDevices.GetN (); ++j)
     {
-      uint16_t cellId = DynamicCast<LteEnbNetDevice> (*scIt)->GetCellId ();
-      mcRrc->RegisterSmallCell (cellId);
+      uint16_t cellId = DynamicCast<LteEnbNetDevice> (scDevices.Get (j))->GetCellId ();
+      if(mcRrc->IsBelongTo (cellId))
+        mcRrc->RegisterSmallCell (cellId);
     }
-    ++mcIt;
   }
 }
 

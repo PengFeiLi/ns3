@@ -462,6 +462,10 @@ private:
 
   EventId m_sendSrsEvent;
 
+  EventId m_reportMeaEvent;
+
+  EventId m_subframeEvent;
+
   /**
    * The `UlPhyTransmission` trace source. Contains trace information regarding
    * PHY stats from UL Tx perspective. Exporting a structure with type
@@ -475,6 +479,12 @@ private:
 
 private:
   void DoSetSpectrumPhyCellId (uint16_t cellId);
+
+public:
+  void Start ();
+
+  void Stop ();
+
 }; // end of `class LteUePhy`
 
 

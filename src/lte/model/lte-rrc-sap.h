@@ -757,13 +757,6 @@ public:
     std::vector<float> se;
   };
 
-  struct SleepPolicy
-  {
-    std::vector<uint16_t> ues;
-    std::vector<uint16_t> targetCellIds;
-    std::vector<uint16_t> sleepCellIds;
-  };
-
 };
 
 

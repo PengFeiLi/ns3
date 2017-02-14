@@ -526,6 +526,8 @@ public:
   void HandoverTrigger (uint16_t targetCellId);
   void RecvHandoverTriggerAck ();
 
+  uint16_t GetSmallCellId () const { return m_smallCellId; }
+
 /******************** only available on the small cell side ***********************/
 private:
   uint16_t m_macroCellId;
@@ -1301,15 +1303,24 @@ private:
 public:
   uint16_t GetCellId () const { return m_cellId; }
   uint16_t GetMacroCellId () const { return m_cellId & (~0x003F); }
+  bool IsBelongTo (uint16_t smallCellId, uint16_t macroCellId)
+  {
+    return ((smallCellId & 0x003F) && (smallCellId & 0xFFC0) == macroCellId);
+  }
+
+  bool IsBelongTo (uint16_t scellId)
+  {
+    return isMacroCell () && IsBelongTo (scellId, m_cellId);
+  }
 
 /************ only available on the macro cell side ************/
 private:
   std::set<uint16_t> m_smallCells;
-
-  std::map<uint16_t, uint16_t> m_uePerSmallCell;
-
   std::set<uint16_t> m_onCells;
   std::set<uint16_t> m_offCells;
+  std::set<uint16_t> m_pendingOffCells;
+  std::set<uint16_t> m_pendingOnCells;
+  std::map<uint16_t, std::set<uint16_t> > m_pendingHandover;
 
   std::set<uint8_t> m_sleepMeasIds;
 
@@ -1318,23 +1329,20 @@ private:
 
   uint8_t DoAddUeMeasReportConfigForSleep (LteRrcSap::ReportConfigEutra reportConfig);
 
-  uint16_t GetUeOnSmallCell (uint16_t cellId);
-  void IncUeOnSmallCell (uint16_t cellId);
-  void DecUeOnSmallCell (uint16_t cellId);
+  std::set<uint16_t> DoGetSmallCellSet ();
+  void DoGetConnectionMap (std::map<uint16_t, uint16_t>& conn, std::map<uint16_t, uint64_t>& idmap);
 
   void DoRecvRrcSmallConnectionRequest (uint16_t rnti, LteRrcSap::RrcSmallConnectionRequest msg);
   void DoRecvRrcScInfoRequest (uint16_t rnti, LteRrcSap::RrcScInfoRequest msg);
 
   void DoRecvRrcd (EpcX2SapUser::RrConfigParams params);
 
-  void DoTurnOnAllCells ();
-  void DoTurnOffAllCells ();
   void DoTurnOnCell (uint16_t cellId);
   void DoTurnOffCell (uint16_t cellId);
   void DoOnOffRequest (uint16_t cellId, bool op);
 
   void DoCollectSleepInformation ();
-  void DoSleepTrigger (LteRrcSap::SleepPolicy sleepPolicy);
+  void DoSleepTrigger (LteSleepManagementSapUser::SleepPolicy sleepPolicy);
 
   void DoRecvDlCqi (EpcX2SapUser::DlCqiParams params);
 
@@ -1345,6 +1353,8 @@ public:
 
   void SetLteSleepManagementSapProvider (LteSleepManagementSapProvider* p);
   LteSleepManagementSapUser* GetLteSleepManagementSapUser ();
+
+  void MacroRemoveUe (uint16_t rnti);
 
 /**************** only availabe on the small cell side *****************/
 private:
@@ -1369,6 +1379,9 @@ private:
   void DoRecvSwitchState (EpcX2SapUser::SwitchStateParams params);
 
   void DoRecvHandoverReconfigurationAck (EpcX2SapUser::HandoverReconfigurationAckParams params);
+
+public:
+  void SmallRemoveUe (uint16_t rnti);
 
 }; // end of `class LteEnbRrc`
 

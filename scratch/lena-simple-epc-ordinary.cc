@@ -41,75 +41,6 @@ using namespace ns3;
 
 NS_LOG_COMPONENT_DEFINE ("EpcFirstExample");
 
-Vector
-RandomPicoPosition(uint32_t enbRadius)
-{
-  double radius_d = static_cast<double>(enbRadius);//六边形内切圆范围内随机部署
-  Ptr<UniformRandomVariable> randomVar = CreateObject<UniformRandomVariable> ();
-
-  randomVar->SetAttribute ("Min", DoubleValue (-radius_d));//避免热点范围超出宏站范围DoubleValue (-radius_d + 40)
-  randomVar->SetAttribute ("Max", DoubleValue (radius_d) );//避免热点范围超出宏站范围DoubleValue (radius_d - 40)
-  double val_x = randomVar->GetValue();
-
-  double val_temp = std::sqrt(enbRadius*enbRadius-val_x*val_x);//避免热点范围超出宏站sqrt((enbRadius-40)*(enbRadius-40)-val_x*val_x)
-  randomVar->SetAttribute ("Min", DoubleValue (-val_temp));
-  randomVar->SetAttribute ("Max", DoubleValue (val_temp));
-  double val_y = randomVar->GetValue();
-
-  double val_height = 0;//1.5;
-
-  Vector pos(val_x, val_y, val_height);
-
-  return pos;
-}
-
-Vector
-RandomUEPosition(uint32_t enbRadius)
-{
-  double radius_d = static_cast<double>(enbRadius);//六边形内切圆范围内随机部署
-  Ptr<UniformRandomVariable> randomVar = CreateObject<UniformRandomVariable> ();
-
-  randomVar->SetAttribute ("Min", DoubleValue (-radius_d));
-  randomVar->SetAttribute ("Max", DoubleValue (radius_d-30));//避免基站接近公共区域
-  double val_x = randomVar->GetValue();
-
-  double val_temp = std::sqrt((enbRadius)*(enbRadius)-val_x*val_x);//避免热点范围超出宏站
-  randomVar->SetAttribute ("Min", DoubleValue (-val_temp));
-  randomVar->SetAttribute ("Max", DoubleValue (val_temp));
-  double val_y = randomVar->GetValue();
-
-  double val_height = 0;//1.5;
-
-  Vector pos(val_x, val_y, val_height);
-
-  return pos;
-}
-
-Ptr<ListPositionAllocator>
-PicoPositions(NodeContainer c, uint32_t enbRadius, double enbYDis)
-{
-  Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator> ();
-  double offset_x=0, offset_y=0;
-
-  for (uint16_t i = 0; i < c.GetN(); i++)//先把前六宏站内的微站部署好
-  {
-    Vector pos = RandomPicoPosition(enbRadius);
-    positionAlloc->Add (Vector(pos.x + offset_x, pos.y + offset_y, pos.z));
-  }
-
-//  std::cout << "weizhi:" << positionAlloc << std::endl;
-  return positionAlloc;
-}
-
-Ptr<ListPositionAllocator>
-UEPositions(NodeContainer c, Ptr<ListPositionAllocator> posallo, double enbYDis)
-{
-  Ptr<ListPositionAllocator> positionAlloc = posallo;//CreateObject<ListPositionAllocator> ();
-
-//  std::cout << "weizhi:" << positionAlloc << std::endl;
-  return positionAlloc;
-}
-
 
 int
 main (int argc, char *argv[])
@@ -117,24 +48,23 @@ main (int argc, char *argv[])
 
   double simTime = 1.1;
   double interPacketInterval = 100;
+  bool uplink = true;
+  bool downlink = true;
 
   uint32_t macroEnbs = 1;
   uint32_t picoEnbs = macroEnbs * 4;
   uint32_t numberOfNodes = picoEnbs;
-  uint32_t enbInterDistance = 500;
-  uint32_t enbRadius = enbInterDistance/2;
-  double enbYDis = std::sqrt(enbInterDistance*enbInterDistance-enbRadius*enbRadius);
-
 
   // Command line arguments
   CommandLine cmd;
   cmd.AddValue("simTime", "Total duration of the simulation [s])", simTime);
   cmd.AddValue("interPacketInterval", "Inter packet interval [ms])", interPacketInterval);
+  cmd.AddValue("uplink", "whether enable uplink data transmission", uplink);
+  cmd.AddValue("downlink", "whether enable downlink data transmission", downlink);
   cmd.Parse(argc, argv);
 
   Ptr<LteHelper> lteHelper = CreateObject<LteHelper> ();
   lteHelper->SetSchedulerType ("ns3::PfFfMacScheduler");
-  lteHelper->SetSleepAlgorithmType ("ns3::SwesSleepAlgorithm");
   Ptr<PointToPointEpcHelper>  epcHelper = CreateObject<PointToPointEpcHelper> ();
   lteHelper->SetEpcHelper (epcHelper);
 
@@ -177,30 +107,47 @@ main (int argc, char *argv[])
   picoNodes.Create(numberOfNodes);
   ueNodes.Create(numberOfNodes);
 
-  //set mobility of macro cells
-  Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator> ();
-  positionAlloc->Add (Vector( 0, 0, 0));
-
   MobilityHelper mobility;
   mobility.SetMobilityModel("ns3::ConstantPositionMobilityModel");
-  mobility.SetPositionAllocator(positionAlloc);
+
+  //set mobility of macro cells
+  Ptr<ListPositionAllocator> macroPositionAlloc = CreateObject<ListPositionAllocator> ();
+  macroPositionAlloc->Add (Vector( 0, 0, 0));
+  mobility.SetPositionAllocator(macroPositionAlloc);
   mobility.Install(enbNodes);
 
-  //Set mobility of small cells and ues
-  Ptr<ListPositionAllocator> positionAllocatortem = PicoPositions(picoNodes, enbRadius, enbYDis);
-  mobility.SetPositionAllocator (positionAllocatortem);
+  //Set mobility of small cells
+  Ptr<ListPositionAllocator> smallPositionAlloc = CreateObject<ListPositionAllocator> ();
+  smallPositionAlloc->Add (Vector(125, 125, 0));
+  smallPositionAlloc->Add (Vector(-125, 125, 0));
+  smallPositionAlloc->Add (Vector(-125, -125, 0));
+  smallPositionAlloc->Add (Vector(125, -125, 0));
+  mobility.SetPositionAllocator (smallPositionAlloc);
   mobility.Install (picoNodes);
-  mobility.SetPositionAllocator (UEPositions(picoNodes, positionAllocatortem, enbYDis));
+
+  // set mobility of ues
+  Ptr<ListPositionAllocator> uePositionAlloc = CreateObject<ListPositionAllocator> ();
+  uePositionAlloc->Add (Vector(125, 0, 0));
+  uePositionAlloc->Add (Vector(0, -125, 0));
+  uePositionAlloc->Add (Vector(-125, 0, 0));
+  uePositionAlloc->Add (Vector(0, 125, 0));
+  // uePositionAlloc->Add (Vector(125, 125, 0));
+  // uePositionAlloc->Add (Vector(-125, 125, 0));
+  // uePositionAlloc->Add (Vector(-125, -125, 0));
+  // uePositionAlloc->Add (Vector(125, -125, 0));
+  mobility.SetPositionAllocator (uePositionAlloc);
   mobility.Install (ueNodes);
 
   //Install macro cells
   Config::SetDefault ("ns3::LteEnbPhy::TxPower", DoubleValue (46));
+  Config::SetDefault ("ns3::SetCoverSleepAlgorithm::RunPeriod", TimeValue (Seconds (2)));
   // lteHelper->SetEnbAntennaModelType ("ns3::ParabolicAntennaModel");//抛物面天线模型
   // lteHelper->SetEnbAntennaModelAttribute ("Beamwidth", DoubleValue (70));//DoubleValue (70)
   lteHelper->SetEnbDeviceAttribute ("DlEarfcn", UintegerValue (100));
   lteHelper->SetEnbDeviceAttribute ("UlEarfcn", UintegerValue (100+18000));
   lteHelper->SetEnbDeviceAttribute ("DlBandwidth", UintegerValue (50));
   lteHelper->SetEnbDeviceAttribute ("UlBandwidth", UintegerValue (50));
+  lteHelper->SetSleepAlgorithmType ("ns3::SetCoverSleepAlgorithm");
   NetDeviceContainer enbLteDevs = lteHelper->InstallMacroEnbDevices (enbNodes);//lteHexGridEnbTopologyHelper->SetPositionAndInstallEnbDevice (enbNodes);
 
   //Install small cells
@@ -210,11 +157,12 @@ main (int argc, char *argv[])
   lteHelper->SetEnbDeviceAttribute ("UlEarfcn", UintegerValue (200+18000));//原先注释
   lteHelper->SetEnbDeviceAttribute ("DlBandwidth", UintegerValue (50));
   lteHelper->SetEnbDeviceAttribute ("UlBandwidth", UintegerValue (50));
+  lteHelper->SetSleepAlgorithmType ("ns3::NoOpSleepAlgorithm");
   NetDeviceContainer picoLteDevs = lteHelper->InstallSmallEnbDevices (picoNodes, 4);
 
   //Install ues
   NetDeviceContainer ueLteDevs = lteHelper->InstallUeDevice (ueNodes);
-
+  lteHelper->RegisterSmallCells (enbLteDevs, picoLteDevs);
   lteHelper->AddX2Interface (NodeContainer(enbNodes, picoNodes));
 
   // Install the IP stack on the UEs
@@ -243,19 +191,16 @@ main (int argc, char *argv[])
   // Install and start applications on UEs and remote host
   uint16_t dlPort = 1234;
   uint16_t ulPort = 2000;
-  uint16_t otherPort = 3000;
   ApplicationContainer clientApps;
   ApplicationContainer serverApps;
   for (uint32_t u = 0; u < ueNodes.GetN (); ++u)
     {
       ++ulPort;
-      ++otherPort;
       PacketSinkHelper dlPacketSinkHelper ("ns3::UdpSocketFactory", InetSocketAddress (Ipv4Address::GetAny (), dlPort));
       PacketSinkHelper ulPacketSinkHelper ("ns3::UdpSocketFactory", InetSocketAddress (Ipv4Address::GetAny (), ulPort));
-      // PacketSinkHelper packetSinkHelper ("ns3::UdpSocketFactory", InetSocketAddress (Ipv4Address::GetAny (), otherPort));
+
       serverApps.Add (dlPacketSinkHelper.Install (ueNodes.Get(u)));
       serverApps.Add (ulPacketSinkHelper.Install (remoteHost));
-      // serverApps.Add (packetSinkHelper.Install (ueNodes.Get(u)));
 
       UdpClientHelper dlClient (ueIpIface.GetAddress (u), dlPort);
       dlClient.SetAttribute ("Interval", TimeValue (MilliSeconds(interPacketInterval)));
@@ -265,20 +210,11 @@ main (int argc, char *argv[])
       ulClient.SetAttribute ("Interval", TimeValue (MilliSeconds(interPacketInterval)));
       ulClient.SetAttribute ("MaxPackets", UintegerValue(1000000));
 
-      // UdpClientHelper client (ueIpIface.GetAddress (u), otherPort);
-      // client.SetAttribute ("Interval", TimeValue (MilliSeconds(interPacketInterval)));
-      // client.SetAttribute ("MaxPackets", UintegerValue(1000000));
+       if(downlink)
+        clientApps.Add (dlClient.Install (remoteHost));
 
-      // clientApps.Add (dlClient.Install (remoteHost));
-      clientApps.Add (ulClient.Install (ueNodes.Get(u)));
-      // if (u+1 < ueNodes.GetN ())
-      //   {
-      //     clientApps.Add (client.Install (ueNodes.Get(u+1)));
-      //   }
-      // else
-      //   {
-      //     clientApps.Add (client.Install (ueNodes.Get(0)));
-      //   }
+      if(uplink)
+        clientApps.Add (ulClient.Install (ueNodes.Get(u)));
     }
   serverApps.Start (Seconds (0.01));
   clientApps.Start (Seconds (0.01));

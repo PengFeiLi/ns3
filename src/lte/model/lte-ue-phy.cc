@@ -163,7 +163,7 @@ LteUePhy::LteUePhy (Ptr<LteSpectrumPhy> dlPhy, Ptr<LteSpectrumPhy> ulPhy)
 
   NS_ASSERT_MSG (Simulator::Now ().GetNanoSeconds () == 0,
                  "Cannot create UE devices after simulation started");
-  Simulator::Schedule (m_ueMeasurementsFilterPeriod, &LteUePhy::ReportUeMeasurements, this);
+  m_reportMeaEvent = Simulator::Schedule (m_ueMeasurementsFilterPeriod, &LteUePhy::ReportUeMeasurements, this);
 
   DoReset ();
 }
@@ -315,11 +315,12 @@ LteUePhy::DoInitialize ()
     }
   if (haveNodeId)
     {
-      Simulator::ScheduleWithContext (nodeId, Seconds (0), &LteUePhy::SubframeIndication, this, 1, 1);
+     // m_subframeEvent = Simulator::ScheduleWithContext (nodeId, Seconds (0), &LteUePhy::SubframeIndication, this, 1, 1);
     }
-  else
+  // else
+    nodeId = nodeId + 0;
     {
-      Simulator::ScheduleNow (&LteUePhy::SubframeIndication, this, 1, 1);
+      m_subframeEvent = Simulator::ScheduleNow (&LteUePhy::SubframeIndication, this, 1, 1);
     }  
   LtePhy::DoInitialize ();
 }
@@ -833,7 +834,7 @@ LteUePhy::ReportUeMeasurements ()
   m_ueCphySapUser->ReportUeMeasurements (ret);
 
   m_ueMeasurementsMap.clear ();
-  Simulator::Schedule (m_ueMeasurementsFilterPeriod, &LteUePhy::ReportUeMeasurements, this);
+  m_reportMeaEvent = Simulator::Schedule (m_ueMeasurementsFilterPeriod, &LteUePhy::ReportUeMeasurements, this);
 }
 
 void
@@ -1158,7 +1159,7 @@ LteUePhy::SubframeIndication (uint32_t frameNo, uint32_t subframeNo)
     }
 
   // schedule next subframe indication
-  Simulator::Schedule (Seconds (GetTti ()), &LteUePhy::SubframeIndication, this, frameNo, subframeNo);
+  m_subframeEvent = Simulator::Schedule (Seconds (GetTti ()), &LteUePhy::SubframeIndication, this, frameNo, subframeNo);
 }
 
 
@@ -1220,6 +1221,72 @@ LteUePhy::DoReset ()
   m_uplinkSpectrumPhy->Reset ();
 
 } // end of void LteUePhy::DoReset ()
+
+void
+LteUePhy::Start ()
+{
+  NS_LOG_FUNCTION (this);
+  m_p10CqiPeriocity = MilliSeconds (1);
+  m_a30CqiPeriocity = MilliSeconds (1);
+  m_state = CELL_SEARCH;
+  m_subframeNo = 0;
+  m_rsReceivedPowerUpdated = false;
+  m_rsInterferencePowerUpdated = false;
+  m_dataInterferencePowerUpdated = false;
+  m_pssReceived = false;
+  m_ueMeasurementsFilterPeriod = MilliSeconds (200);
+  m_ueMeasurementsFilterLast = MilliSeconds (0);
+  m_rsrpSinrSampleCounter = 0;
+
+  m_rnti = 0;
+  m_transmissionMode = 0;
+  m_srsPeriodicity = 0;
+  m_srsConfigured = false;
+  m_dlConfigured = false;
+  m_ulConfigured = false;
+  m_raPreambleId = 255; // value out of range
+  m_raRnti = 11; // value out of range
+  m_p10CqiLast = Simulator::Now ();
+  m_a30CqiLast = Simulator::Now ();
+  m_paLinear = 1;
+
+  m_packetBurstQueue.clear ();
+  m_controlMessagesQueue.clear ();
+  m_subChannelsForTransmissionQueue.clear ();
+  m_subChannelsForReception.clear ();
+  m_pssList.clear ();
+  m_ueMeasurementsMap.clear ();
+  for (int i = 0; i < m_macChTtiDelay; i++)
+    {
+      Ptr<PacketBurst> pb = CreateObject <PacketBurst> ();
+      m_packetBurstQueue.push_back (pb);
+      std::list<Ptr<LteControlMessage> > l;
+      m_controlMessagesQueue.push_back (l);
+    }
+  std::vector <int> ulRb;
+  m_subChannelsForTransmissionQueue.resize (m_macChTtiDelay, ulRb);
+
+  m_reportMeaEvent = Simulator::Schedule (m_ueMeasurementsFilterPeriod, &LteUePhy::ReportUeMeasurements, this);
+  // if (haveNodeId)
+  //   {
+  //    m_subframeEvent = Simulator::ScheduleWithContext (nodeId, Seconds (0), &LteUePhy::SubframeIndication, this, 1, 1);
+    // }
+  // else
+    {
+      m_subframeEvent = Simulator::ScheduleNow (&LteUePhy::SubframeIndication, this, 1, 1);
+    }  
+}
+
+void
+LteUePhy::Stop ()
+{
+  NS_LOG_FUNCTION (this);
+  m_reportMeaEvent.Cancel ();
+  m_subframeEvent.Cancel ();
+  m_sendSrsEvent.Cancel ();
+  m_downlinkSpectrumPhy->Reset ();
+  m_uplinkSpectrumPhy->Reset ();
+}
 
 void
 LteUePhy::DoStartCellSearch (uint16_t dlEarfcn)

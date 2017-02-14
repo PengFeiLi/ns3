@@ -166,6 +166,63 @@ LteUeRrc::LteUeRrc ()
   m_path = PATH_CONTROL;
 }
 
+void
+LteUeRrc::Start ()
+{
+  NS_LOG_FUNCTION (this);
+  m_state = IDLE_START;
+  m_cellId = 0;
+  m_smallCellId = 0;
+  m_connectionPending = false;
+  m_hasReceivedMib = false;
+  m_hasReceivedSib1 = false;
+  m_hasReceivedSib2 = false;
+  m_bid2DrbidMap.clear ();
+  m_srb1 = 0;
+  m_srb1Old = 0;
+  m_drbMap.clear ();
+  m_lastRrcTransactionIdentifier = 0;
+  m_acceptableCell.clear ();
+  // m_varMeasReportList.clear ();
+  m_storedMeasValues.clear ();
+  // m_enteringTriggerQueue.clear ();
+  // m_leavingTriggerQueue.clear ();
+
+
+  m_smallState = IDLE_START;
+  m_smallCellId = 0;
+  m_hasReceivedSmallMib = false;
+  m_hasReceivedSmallSib1 = false;
+  m_hasReceivedSmallSib2 = false;
+  m_smallStoredMeasValues.clear ();
+  m_smallAcceptableCell.clear ();
+  m_smallBid2DrbidMap.clear ();
+  m_smallDrbMap.clear ();
+}
+
+void
+LteUeRrc::Stop ()
+{
+  NS_LOG_FUNCTION (this);
+  m_switchPathEvent.Cancel ();
+  m_connectionTimeout.Cancel ();
+  m_smallConnectionTimeout.Cancel ();
+  
+  std::map<uint8_t, std::list<PendingTrigger_t> >::iterator it1;
+  for(it1=m_enteringTriggerQueue.begin(); it1!=m_enteringTriggerQueue.end (); ++it1)
+    for(std::list<PendingTrigger_t>::iterator it11 = it1->second.begin (); it11!=it1->second.end(); ++it11)
+      it11->timer.Cancel ();
+
+  std::map<uint8_t, std::list<PendingTrigger_t> >::iterator it2;
+  for(it2=m_leavingTriggerQueue.begin(); it2!=m_leavingTriggerQueue.end (); ++it2)
+    for(std::list<PendingTrigger_t>::iterator it21 = it2->second.begin (); it21!=it2->second.end(); ++it21)
+      it21->timer.Cancel ();
+  
+  std::map<uint8_t, VarMeasReport>::iterator it3;
+  for(it3=m_varMeasReportList.begin(); it3!=m_varMeasReportList.end(); ++it3)
+    it3->second.periodicReportTimer.Cancel ();
+}
+
 
 LteUeRrc::~LteUeRrc ()
 {
@@ -181,7 +238,14 @@ LteUeRrc::DoDispose ()
   delete m_rrcSapProvider;
   delete m_drbPdcpSapUser;
   delete m_asSapProvider;
+
+  delete m_smallCphySapUser;
+  delete m_smallCmacSapUser;
+  delete m_smallRrcSapProvider;
+  delete m_smallDrbPdcpSapUser;
+
   m_drbMap.clear ();
+  m_smallDrbMap.clear();
 }
 
 TypeId
@@ -194,6 +258,10 @@ LteUeRrc::GetTypeId (void)
     .AddAttribute ("DataRadioBearerMap", "List of UE RadioBearerInfo for Data Radio Bearers by LCID.",
                    ObjectMapValue (),
                    MakeObjectMapAccessor (&LteUeRrc::m_drbMap),
+                   MakeObjectMapChecker<LteDataRadioBearerInfo> ())
+    .AddAttribute ("SmallDataRadioBearerMap", "List of UE RadioBearerInfo for Data Radio Bearers by LCID.",
+                   ObjectMapValue (),
+                   MakeObjectMapAccessor (&LteUeRrc::m_smallDrbMap),
                    MakeObjectMapChecker<LteDataRadioBearerInfo> ())
     .AddAttribute ("Srb0", "SignalingRadioBearerInfo for SRB0",
                    PointerValue (),
@@ -357,14 +425,14 @@ LteUeRrc::GetImsi (void) const
 uint16_t
 LteUeRrc::GetRnti () const
 {
-  NS_LOG_FUNCTION (this);
+  // NS_LOG_FUNCTION (this);
   return m_rnti;
 }
 
 uint16_t
 LteUeRrc::GetCellId () const
 {
-  NS_LOG_FUNCTION (this);
+  // NS_LOG_FUNCTION (this);
   return m_cellId;
 }
 
@@ -617,7 +685,7 @@ LteUeRrc::DoStartCellSelection (uint16_t dlEarfcn)
   NS_ASSERT_MSG (m_state == IDLE_START,
                  "cannot start cell selection from state " << ToString (m_state));
   m_dlEarfcn = dlEarfcn;
-  m_smallDlEarfcn = 200;
+  m_smallDlEarfcn = 3050;
   m_cphySapProvider->StartCellSearch (dlEarfcn);
   SwitchToState (IDLE_CELL_SEARCH);
 }
@@ -3361,10 +3429,10 @@ LteUeRrc::DoSendRrcSmallConnectionRequest ()
   msg.cellId = m_smallCellId;
   m_rrcSapUser->SendRrcSmallConnectionRequest (msg); 
 
-  m_smallConnectionTimeout = Simulator::Schedule (
-                                  m_t300,
-                                  &LteUeRrc::SmallConnectionTimeout,
-                                  this);
+  // m_smallConnectionTimeout = Simulator::Schedule (
+  //                                 m_t300,
+  //                                 &LteUeRrc::SmallConnectionTimeout,
+  //                                 this);
 }
 
 void
@@ -3406,6 +3474,7 @@ LteUeRrc::DoRecvRrcSmallConnectionSetup (LteRrcSap::RrcConnectionSetup msg)
         m_rrcSapUser->SendRrcConnectionSetupCompleted (msg2);
         m_asSapUser->NotifyConnectionSuccessful ();
         SmallSwitchToState (CONNECTED_NORMALLY);
+        m_connectionReconfigurationTrace (m_imsi, m_smallCellId, m_rnti);
         // Simulator::Schedule (MilliSeconds (20), &LteUeRrc::SwitchPath, this);
       }
       break;
@@ -3559,6 +3628,8 @@ LteUeRrc::ApplySmallConnectionSetup (LteRrcSap::RadioResourceConfigDedicated rrc
       //Remove LCID
       m_smallCmacSapProvider->RemoveLc (drbid + 2);
     }
+
+  m_connectionReconfigurationTrace (m_imsi, m_smallCellId, m_rnti);
 }
 
 static const std::string pathName[LteUeRrc::NUM_PATHS] = 
@@ -3596,7 +3667,7 @@ LteUeRrc::SwitchPath ()
   NS_LOG_INFO ("switch to path: " << PathToString(m_path));
 
   m_ratio = 1 - m_ratio;
-  Simulator::Schedule (MilliSeconds (m_period * m_ratio), &LteUeRrc::SwitchPath, this);
+  m_switchPathEvent = Simulator::Schedule (MilliSeconds (m_period * m_ratio), &LteUeRrc::SwitchPath, this);
 }
 
 void

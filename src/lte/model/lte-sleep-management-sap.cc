@@ -23,6 +23,9 @@
 
 namespace ns3 {
 
+LteSleepManagementSap::~LteSleepManagementSap ()
+{
+}
 
 LteSleepManagementSapProvider::~LteSleepManagementSapProvider ()
 {

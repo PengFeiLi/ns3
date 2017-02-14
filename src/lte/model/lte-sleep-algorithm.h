@@ -24,6 +24,7 @@
 
 #include <ns3/object.h>
 #include <ns3/lte-rrc-sap.h>
+#include <ns3/epc-x2-sap.h>
 
 namespace ns3 {
 
@@ -52,11 +53,16 @@ public:
 
     virtual LteSleepManagementSapProvider* GetLteSleepManagementSapProvider () = 0;
 
+    void SetCellId (uint16_t cellId);
+
 protected:
     virtual void DoDispose ();
 
     virtual void DoReportUeMeas (uint16_t rnti, LteRrcSap::MeasResults measResults) = 0;
 
+    virtual void DoReportDlCqi (uint16_t cellId, EpcX2Sap::DlCqiParams dlCqiparams) = 0;
+
+    uint16_t m_cellId;
 
 }; // end of class LteSleepAlgorithm
 

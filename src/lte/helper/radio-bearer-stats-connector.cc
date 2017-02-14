@@ -68,7 +68,7 @@ void
 DlTxPduCallback (Ptr<BoundCallbackArgument> arg, std::string path,
                  uint16_t rnti, uint8_t lcid, uint32_t packetSize)
 {
-  NS_LOG_FUNCTION (path << rnti << (uint16_t)lcid << packetSize);
+  NS_LOG_FUNCTION (path << arg->cellId << rnti << (uint16_t)lcid << packetSize);
   arg->stats->DlTxPdu (arg->cellId, arg->imsi, rnti, lcid, packetSize);
 }
 
@@ -85,7 +85,7 @@ void
 DlRxPduCallback (Ptr<BoundCallbackArgument> arg, std::string path,
                  uint16_t rnti, uint8_t lcid, uint32_t packetSize, uint64_t delay)
 {
-  NS_LOG_FUNCTION (path << rnti << (uint16_t)lcid << packetSize << delay);
+  NS_LOG_FUNCTION (path << arg->cellId << rnti << (uint16_t)lcid << packetSize << delay);
   arg->stats->DlRxPdu (arg->cellId, arg->imsi, rnti, lcid, packetSize, delay);
 }
 
@@ -101,7 +101,7 @@ void
 UlTxPduCallback (Ptr<BoundCallbackArgument> arg, std::string path,
                  uint16_t rnti, uint8_t lcid, uint32_t packetSize)
 {
-  NS_LOG_FUNCTION (path << rnti << (uint16_t)lcid << packetSize);
+  NS_LOG_FUNCTION (path << arg->cellId << rnti << (uint16_t)lcid << packetSize);
  
   arg->stats->UlTxPdu (arg->cellId, arg->imsi, rnti, lcid, packetSize);
 }
@@ -119,7 +119,7 @@ void
 UlRxPduCallback (Ptr<BoundCallbackArgument> arg, std::string path,
                  uint16_t rnti, uint8_t lcid, uint32_t packetSize, uint64_t delay)
 {
-  NS_LOG_FUNCTION (path << rnti << (uint16_t)lcid << packetSize << delay);
+  NS_LOG_FUNCTION (path << arg->cellId << rnti << (uint16_t)lcid << packetSize << delay);
  
   arg->stats->UlRxPdu (arg->cellId, arg->imsi, rnti, lcid, packetSize, delay);
 }
@@ -331,7 +331,7 @@ void
 RadioBearerStatsConnector::ConnectTracesUeIfFirstTime (std::string context, uint64_t imsi, uint16_t cellId, uint16_t rnti)
 {
   NS_LOG_FUNCTION (this << context);
-  if (m_imsiSeenUe.find (imsi) == m_imsiSeenUe.end ())
+  // if (m_imsiSeenUe.find (imsi) == m_imsiSeenUe.end ())
     {
       m_imsiSeenUe.insert (imsi);
       ConnectTracesUe (context, imsi, cellId, rnti);
@@ -342,7 +342,7 @@ void
 RadioBearerStatsConnector::ConnectTracesEnbIfFirstTime (std::string context, uint64_t imsi, uint16_t cellId, uint16_t rnti)
 {
   NS_LOG_FUNCTION (this << context);
-   if (m_imsiSeenEnb.find (imsi) == m_imsiSeenEnb.end ())
+   // if (m_imsiSeenEnb.find (imsi) == m_imsiSeenEnb.end ())
     {
       m_imsiSeenEnb.insert (imsi);
       ConnectTracesEnb (context, imsi, cellId, rnti);
@@ -361,9 +361,9 @@ RadioBearerStatsConnector::ConnectTracesUe (std::string context, uint64_t imsi, 
       arg->imsi = imsi;
       arg->cellId = cellId; 
       arg->stats = m_rlcStats;
-      Config::Connect (basePath + "/DataRadioBearerMap/*/LteRlc/TxPDU",
+      Config::Connect (basePath + "/SmallDataRadioBearerMap/*/LteRlc/TxPDU",
 		       MakeBoundCallback (&UlTxPduCallback, arg));
-      Config::Connect (basePath + "/DataRadioBearerMap/*/LteRlc/RxPDU",
+      Config::Connect (basePath + "/SmallDataRadioBearerMap/*/LteRlc/RxPDU",
 		       MakeBoundCallback (&DlRxPduCallback, arg));
       Config::Connect (basePath + "/Srb1/LteRlc/TxPDU",
 		       MakeBoundCallback (&UlTxPduCallback, arg));
@@ -377,9 +377,9 @@ RadioBearerStatsConnector::ConnectTracesUe (std::string context, uint64_t imsi, 
       arg->imsi = imsi;
       arg->cellId = cellId; 
       arg->stats = m_pdcpStats;
-      Config::Connect (basePath + "/DataRadioBearerMap/*/LtePdcp/RxPDU",
+      Config::Connect (basePath + "/SmallDataRadioBearerMap/*/LtePdcp/RxPDU",
 		       MakeBoundCallback (&DlRxPduCallback, arg));
-      Config::Connect (basePath + "/DataRadioBearerMap/*/LtePdcp/TxPDU",
+      Config::Connect (basePath + "/SmallDataRadioBearerMap/*/LtePdcp/TxPDU",
 		       MakeBoundCallback (&UlTxPduCallback, arg));
       Config::Connect (basePath + "/Srb1/LtePdcp/RxPDU",
 		       MakeBoundCallback (&DlRxPduCallback, arg));

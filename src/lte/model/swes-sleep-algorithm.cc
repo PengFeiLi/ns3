@@ -105,5 +105,11 @@ SwesSleepAlgorithm::DoReportUeMeas (uint16_t rnti, LteRrcSap::MeasResults measRe
     NS_LOG_FUNCTION (this);
 }
 
+void
+SwesSleepAlgorithm::DoReportDlCqi (uint16_t cellId, EpcX2Sap::DlCqiParams dlCqiparams)
+{
+    NS_LOG_FUNCTION (this);
+}
+
 
 } // end of namespace ns3

@@ -49,5 +49,11 @@ LteSleepAlgorithm::DoDispose ()
 {
 }
 
+void
+LteSleepAlgorithm::SetCellId (uint16_t cellId)
+{
+    m_cellId = cellId;
+}
+
 
 } // end of namespace ns3
