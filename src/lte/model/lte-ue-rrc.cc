@@ -3110,7 +3110,7 @@ LteUeRrc::DoReportSmallUeMeasurements (LteUeCphySapUser::UeMeasurementsParameter
       // start decoding BCH
       // SmallSynchronizeToStrongestCell ();
       ReportSmallCellSearchMeasurements ();
-      SmallSwitchToState (IDLE_WAIT_SYNC_SMALLCELL);
+      // SmallSwitchToState (IDLE_WAIT_SYNC_SMALLCELL);
     }
   // else
   //   {
@@ -3675,42 +3675,32 @@ LteUeRrc::ReportSmallCellSearchMeasurements ()
 {
   NS_LOG_FUNCTION (this);
 
-  LteRrcSap::MeasurementReport measurementReport;
-  LteRrcSap::MeasResults& measResults = measurementReport.measResults;
-  measResults.measId = 32;
-  measResults.rsrpResult = 97;
-  measResults.rsrqResult = 34;
-  measResults.haveMeasResultNeighCells = false;
+  uint16_t maxCellId = 0;
+  double maxRsrp = -std::numeric_limits<double>::infinity ();
 
-  NS_LOG_INFO ("Ue " << m_imsi << " send SmallCellMeas_Srb1 to Macro Cell " << m_cellId);
-  int i=0;
   std::map<uint16_t, MeasValues>::iterator storedMeasIt;
-  for (storedMeasIt = m_storedMeasValues.begin ();
-        storedMeasIt != m_storedMeasValues.end (); ++storedMeasIt)
+  for (storedMeasIt = m_storedMeasValues.begin (); storedMeasIt != m_storedMeasValues.end (); ++storedMeasIt)
     {
         if (!isBelongTo (storedMeasIt->first, m_cellId))
           continue;
 
-        LteRrcSap::MeasResultEutra measResultEutra;
-        measResultEutra.physCellId = storedMeasIt->first;
-        measResultEutra.haveCgiInfo = false;
-        measResultEutra.haveRsrpResult = true;
-        measResultEutra.rsrpResult = EutranMeasurementMapping::Dbm2RsrpRange (storedMeasIt->second.rsrp);
-        measResultEutra.haveRsrqResult = true;
-        measResultEutra.rsrqResult = EutranMeasurementMapping::Db2RsrqRange (storedMeasIt->second.rsrq);
-
-        NS_LOG_INFO ("measurement " << ++i
-                        << ": cellId " << (uint32_t) measResultEutra.physCellId 
+        NS_LOG_INFO ("measurement cellId " << (uint32_t) storedMeasIt->first 
                         << " RSRP (" << storedMeasIt->second.rsrp << " dBm)"
                         << " RSRQ (" << storedMeasIt->second.rsrq << " dB)");
 
-        measResults.measResultListEutra.push_back (measResultEutra);
-        measResults.haveMeasResultNeighCells = true;
+      if (storedMeasIt->second.rsrp > maxRsrp)
+      {
+        maxRsrp = storedMeasIt->second.rsrp;
+        maxCellId = storedMeasIt->first;
+      }
     }
 
-    if (measResults.haveMeasResultNeighCells)
+    if (maxCellId != 0)
       {
-          m_rrcSapUser->SendMeasurementReport (measurementReport);
+        SmallSwitchToState (IDLE_WAIT_SYNC_SMALLCELL);
+        LteRrcSap::CellIdMsg msg;
+        msg.cellId = maxCellId;
+        DoRecvSyncSmallCellId (msg);
       }
     else
       {
