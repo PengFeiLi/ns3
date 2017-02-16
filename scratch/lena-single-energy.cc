@@ -139,7 +139,7 @@ main (int argc, char *argv[])
   NetDeviceContainer enbLteDevs = lteHelper->InstallMacroEnbDevices (macroNodes);
 
   // install small enbs
-  Ptr<ListPositionAllocator> smallPosAlloc = GetPosition (numberOfSmalls, radius, 10.0, smallDist, 5);
+  Ptr<ListPositionAllocator> smallPosAlloc = GetPosition (numberOfSmalls, radius, 10.0, smallDist, 10);
   smallNodes.Create (numberOfSmalls);
   mobility.SetPositionAllocator (smallPosAlloc);
   mobility.Install (smallNodes);
