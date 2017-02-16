@@ -225,9 +225,9 @@ Record (std::map<uint16_t, Vector> mcPos, std::map<uint16_t, Vector> scPos, std:
   }
 
   of << uePos.size () << "\n";
-  for(uint32_t i=1; i<=uePos.size (); ++i)
+  for(uint32_t i=0; i<=uePos.size (); ++i)
   {
-    of << i << " " << uePos[i] << "\n";
+    of << i+1 << " " << uePos[i] << "\n";
   }
 
   of << conn.size () << "\n";
