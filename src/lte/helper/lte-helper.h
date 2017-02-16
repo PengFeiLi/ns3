@@ -38,6 +38,7 @@
 #include <ns3/epc-tft.h>
 #include <ns3/mobility-model.h>
 #include <ns3/lte-ue-net-device.h>
+#include <ns3/applications-module.h>
 
 namespace ns3 {
 
@@ -782,6 +783,7 @@ public:
     void SetSleepAlgorithmType (std::string type);
     void SetSleepAlgorithmAttribute (std::string n, const AttributeValue &v);
     void ReInstallUe (Ptr<Node> n, Ptr<LteUeNetDevice> dev);
+    void GetRecvBytes (ApplicationContainer apps);
 }; // end of `class LteHelper`
 
 

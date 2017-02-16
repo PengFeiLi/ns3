@@ -200,6 +200,12 @@ main (int argc, char *argv[])
     Simulator::Schedule (MilliSeconds (delay), &Application::Start, clientApps.Get (i));
   }
 
+  // stat packets
+  Simulator::Schedule (MilliSeconds (numberOfUes * startInterval + 1000), &LteHelper::GetRecvBytes, lteHelper, serverApps); 
+  Simulator::Schedule (MilliSeconds (startTime * 1000 - 10), &LteHelper::GetRecvBytes, lteHelper, serverApps); 
+  Simulator::Schedule (MilliSeconds (startTime * 1000 + startInterval * 100), &LteHelper::GetRecvBytes, lteHelper, serverApps); 
+  Simulator::Schedule (MilliSeconds (simTime * 1000 - 10), &LteHelper::GetRecvBytes, lteHelper, serverApps); 
+
   Simulator::Stop(Seconds(simTime));
   Simulator::Run();
 

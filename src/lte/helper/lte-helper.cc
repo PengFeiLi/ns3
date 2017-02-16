@@ -1936,4 +1936,18 @@ LteHelper::SetSleepAlgorithmAttribute (std::string n, const AttributeValue &v)
   m_sleepAlgorithmFactory.Set (n, v);
 }
 
+void
+LteHelper::GetRecvBytes (ApplicationContainer apps)
+{
+  NS_LOG_FUNCTION (this);
+  static std::ofstream of("data/pkt.dat", std::ofstream::ate);
+  of << apps.GetN () << " " << Simulator::Now ().GetMilliSeconds () << "\n";
+  for(uint32_t i=0; i<apps.GetN (); ++i)
+  {
+    Ptr<PacketSink> sink = DynamicCast<PacketSink> (apps.Get (i));
+    of << i+1 << " " << sink->GetTotalRx () << "\n";
+  }
+  // of.close ();
+}
+
 } // namespace ns3
