@@ -54,8 +54,10 @@ main (int argc, char *argv[])
   uint32_t numberOfUes = 1;
   uint32_t startTime = 2;
   uint32_t startInterval = 100;
+  double rateReq = 100000;
 
-  double radius = 400;
+  double radius = 140;
+  double smallDist = 10.0;
 
   // Command line arguments
   CommandLine cmd;
@@ -65,6 +67,9 @@ main (int argc, char *argv[])
   cmd.AddValue("startTime", "start time for sleep algorithm", startTime);
   cmd.AddValue("startInterval", "start interval for ues", startInterval);
   cmd.AddValue("numberOfSmalls", "number of small cells", numberOfSmalls);
+  cmd.AddValue("rateRequire", " ", rateReq);
+  cmd.AddValue("radius", "", radius);
+  cmd.AddValue("smallDist", "", smallDist);
   cmd.Parse(argc, argv);
 
   // init random
@@ -125,6 +130,7 @@ main (int argc, char *argv[])
   Config::SetDefault ("ns3::LteEnbRrc::SrsPeriodicity", UintegerValue(320));
   Config::SetDefault ("ns3::LteEnbPhy::TxPower", DoubleValue (46));
   Config::SetDefault ("ns3::SetCoverSleepAlgorithm::StartTime", TimeValue(Seconds(startTime)));
+  Config::SetDefault ("ns3::SetCoverSleepAlgorithm::RateRequirement", DoubleValue(rateReq));
   lteHelper->SetEnbDeviceAttribute ("DlEarfcn", UintegerValue (2510));
   lteHelper->SetEnbDeviceAttribute ("UlEarfcn", UintegerValue (2510+18000));
   lteHelper->SetEnbDeviceAttribute ("DlBandwidth", UintegerValue (100));
@@ -133,7 +139,7 @@ main (int argc, char *argv[])
   NetDeviceContainer enbLteDevs = lteHelper->InstallMacroEnbDevices (macroNodes);
 
   // install small enbs
-  Ptr<ListPositionAllocator> smallPosAlloc = GetPosition (numberOfSmalls, radius, 10.0, 60);
+  Ptr<ListPositionAllocator> smallPosAlloc = GetPosition (numberOfSmalls, radius, 10.0, smallDist);
   smallNodes.Create (numberOfSmalls);
   mobility.SetPositionAllocator (smallPosAlloc);
   mobility.Install (smallNodes);

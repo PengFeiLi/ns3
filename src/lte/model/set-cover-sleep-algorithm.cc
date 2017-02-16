@@ -87,7 +87,7 @@ SetCoverSleepAlgorithm::SetCoverSleepAlgorithm ()
       m_pb (1.0),
       m_maxW (20000000.0),
       m_rho (100000.0),
-      m_alpha (0.1),
+      m_alpha (0.0),
       m_rsrpThresh (-120.0),
       m_maxSe (5.55),
       m_noisePower (0.0)
