@@ -244,7 +244,7 @@ Ptr<ListPositionAllocator>
 GetMacroPosition (uint32_t n, double macroDist, double height)
 {
   double yDist = std::sqrt (3) / 2 * macroDist;
-  double offset_x,offset_y;  
+  double offset_x=0,offset_y=0;  
   Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator> ();
   for (uint16_t i = 0; i < n; i++)
     {

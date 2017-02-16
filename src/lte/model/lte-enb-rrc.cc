@@ -1140,7 +1140,7 @@ UeManager::DoRecvSmallCellSearchMeasurements (LteRrcSap::MeasResults measResults
 
   NS_LOG_INFO ("Macro Cell " << m_rrc->m_cellId << " receive SmallCellMeas_Srb1 from UE " << m_imsi);
 
-  uint16_t maxCellId;
+  uint16_t maxCellId=0;
   double maxRsrp = -std::numeric_limits<double>::infinity ();
   std::list<LteRrcSap::MeasResultEutra>::iterator mreIt;
 

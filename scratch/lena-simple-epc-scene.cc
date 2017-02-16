@@ -89,7 +89,7 @@ Ptr<ListPositionAllocator>
 PicoPositions(NodeContainer c, uint32_t enbRadius, double enbYDis)
 {
   Ptr<ListPositionAllocator> positionAlloc = CreateObject<ListPositionAllocator> ();
-  double offset_x,offset_y;
+  double offset_x=0, offset_y=0;
 
   for (uint16_t i = 0; i < (c.GetN()-4); i++)//先把前六宏站内的微站部署好
   {
