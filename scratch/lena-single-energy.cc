@@ -40,7 +40,7 @@ NS_LOG_COMPONENT_DEFINE ("SingleEnergy");
 
 Ptr<UniformRandomVariable> randomGen = 0;
 
-Ptr<ListPositionAllocator> GetPosition (int n, double radius, double height, double dist=0);
+Ptr<ListPositionAllocator> GetPosition (int n, double radius, double height, double dist=0, double delta=0);
 void Record (std::map<uint16_t, Vector>, std::map<uint16_t, Vector>, std::vector<Vector>, std::map<uint64_t, std::pair<uint16_t, uint16_t> >);
 
 int
@@ -139,7 +139,7 @@ main (int argc, char *argv[])
   NetDeviceContainer enbLteDevs = lteHelper->InstallMacroEnbDevices (macroNodes);
 
   // install small enbs
-  Ptr<ListPositionAllocator> smallPosAlloc = GetPosition (numberOfSmalls, radius, 10.0, smallDist);
+  Ptr<ListPositionAllocator> smallPosAlloc = GetPosition (numberOfSmalls, radius, 10.0, smallDist, 5);
   smallNodes.Create (numberOfSmalls);
   mobility.SetPositionAllocator (smallPosAlloc);
   mobility.Install (smallNodes);
@@ -242,17 +242,17 @@ main (int argc, char *argv[])
 }
 
 Ptr<ListPositionAllocator>
-GetPosition (int n, double radius, double h, double dist)
+GetPosition (int n, double radius, double h, double dist, double delta)
 {
   Ptr<ListPositionAllocator> pos = CreateObject<ListPositionAllocator> ();
-  double delta=0.0, range=radius*radius;
+  double range=radius*radius;
   for(int i=0; i<n; ++i)
   {
     double x=0, y=0;
     while(true) {
       x = randomGen->GetValue ();
       y = randomGen->GetValue ();
-      if(x*x+y*y > range-delta)
+      if(x*x+y*y > range-delta*delta)
         continue;
       Vector v(x, y, h);
       int j= dist <= 1e-6 ? i : 0;
