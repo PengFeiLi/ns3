@@ -59,6 +59,8 @@ main (int argc, char *argv[])
   double radius = 140;
   double smallDist = 10.0;
 
+  double rsprThresh = 78.0;
+
   // Command line arguments
   CommandLine cmd;
   cmd.AddValue("simTime", "Total duration of the simulation [s])", simTime);
@@ -163,6 +165,7 @@ main (int argc, char *argv[])
   mobility.SetPositionAllocator (uePosAlloc);
   mobility.Install (ueNodes);
 
+  Config::SetDefault ("ns3::SetCoverSleepAlgorithm::RsrpThresh", DoubleValue (rsprThresh));
   lteHelper->SetUeDeviceAttribute ("DlEarfcn", UintegerValue (2510));
   NetDeviceContainer ueLteDevs = lteHelper->InstallUeDevice (ueNodes);
 

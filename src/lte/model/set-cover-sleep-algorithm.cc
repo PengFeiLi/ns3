@@ -134,6 +134,10 @@ SetCoverSleepAlgorithm::GetTypeId ()
                        DoubleValue (100000.0),
                        MakeDoubleAccessor (&SetCoverSleepAlgorithm::m_rho),
                        MakeDoubleChecker<double> ())
+        .AddAttribute ("RsrpThresh", "Rsrp thresh for sleep",
+                        DoubleValue (80.0),
+                        MakeDoubleAccessor (&SetCoverSleepAlgorithm::m_rsrpThresh),
+                        MakeDoubleChecker<double> ())
     ;
     return tid;
 }
