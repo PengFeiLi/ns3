@@ -344,12 +344,21 @@ SetCoverSleepAlgorithm::Run ()
 
     NewStatus (newConnection);
 
-    Record ();
-
     for(uint32_t i=0; i<idleCells.size(); i+=2)
     {
         m_smallCells.insert (idleCells[i]);
     }
+
+    if(m_smallCells.size()*2 > m_cells.size())
+    {
+        std::vector<uint16_t> tmp(m_smallCells.begin (), m_smallCells.end ());
+        for(uint32_t i=0; i<tmp.size(); i+=2)
+        {
+            m_smallCells.erase (tmp[i]);
+        }
+    }
+
+    Record ();
 
     LteSleepManagementSap::SleepPolicy sleepPolicy;
     sleepPolicy.sleepCells = m_smallCells;
