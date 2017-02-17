@@ -263,6 +263,7 @@ SetCoverSleepAlgorithm::Run ()
 
     CurrentStatus ();
 
+    std::vector<uint16_t> idleCells;
     std::map<uint16_t, uint16_t> newConnection;
     while (!m_ues.empty () && !m_ubMap.empty ())
     {
@@ -316,6 +317,7 @@ SetCoverSleepAlgorithm::Run ()
             pqueue.push (bwRnti);
             ++sit;
         }
+        bool idle = true;
         while (W > 0 && !pqueue.empty ())
         {
             BwRnti bwRnti = pqueue.top ();
@@ -325,6 +327,7 @@ SetCoverSleepAlgorithm::Run ()
                 m_ues.erase (bwRnti.rnti);
                 bjub.erase (bwRnti.rnti);
                 W -= bwRnti.bw;
+                idle = false;
                 if (m_ueToCell[bwRnti.rnti] != bj)
                     newConnection[bwRnti.rnti] = bj;
                 NS_LOG_INFO ("find minumum used bandwidth " << bwRnti.bw << " RNTI " << bwRnti.rnti);
@@ -334,6 +337,7 @@ SetCoverSleepAlgorithm::Run ()
               break;
             }
         }
+        if(idle) idleCells.push_back (bj);
         m_ubMap.erase (bj);
         m_smallCells.erase (bj);
     }
@@ -341,6 +345,11 @@ SetCoverSleepAlgorithm::Run ()
     NewStatus (newConnection);
 
     Record ();
+
+    for(uint32_t i=0; i<idleCells.size(); i+=2)
+    {
+        m_smallCells.insert (idleCells[i]);
+    }
 
     LteSleepManagementSap::SleepPolicy sleepPolicy;
     sleepPolicy.sleepCells = m_smallCells;
